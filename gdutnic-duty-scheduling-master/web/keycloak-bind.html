@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>绑定 GDUTNIC 账号 · 网络服务协会</title>
+  <link rel="icon" href="/icon/gdutnic.png">
+  <link rel="stylesheet" href="/static/styles.css"><link rel="stylesheet" href="/static/schedule.css">
+<link rel="stylesheet" href="/static/auth-background.css">
+<script src="/static/auth-background.js" defer></script>
+</head>
+<body class="auth-pending">
+<section class="admin-board">
+  <div class="admin-board-left">
+    <div class="admin-logo"><img src="/icon/gdutnic.png" alt="网协标志"></div>
+    <h1>绑定本地账号</h1>
+    <p>完成一次绑定，以后即可通过GDUTNIC登录。</p>
+    <p class="sso-bind-note">当前 SSO 账号：<strong id="ssoUsername">正在读取…</strong></p>
+  </div>
+  <form id="ssoBindForm" class="admin-board-right" method="post">
+    <p id="ssoBindHint" class="sso-bind-note">请输入已有本地账号的用户名和密码。</p>
+    <label class="outlined-field"><input name="username" autocomplete="username" placeholder=" " maxlength="64" required><span>本地用户名</span></label>
+    <label class="outlined-field"><input name="password" type="password" autocomplete="current-password" placeholder=" " required><span>本地密码</span></label>
+    <p id="ssoBindStatus" class="admin-auth-status" role="alert"></p>
+    <div class="auth-actions"><a class="btn tonal" href="/">返回登录</a><button id="ssoVerify" type="submit" class="btn primary" disabled>验证并绑定</button></div>
+  </form>
+</section>
+<dialog id="ssoConfirm" class="sso-confirm" aria-labelledby="ssoConfirmTitle">
+  <h2 id="ssoConfirmTitle">确认绑定</h2><p id="ssoConfirmMessage"></p>
+  <p id="ssoConfirmStatus" role="alert"></p>
+  <div class="auth-actions"><button id="ssoCancel" type="button" class="btn tonal">取消</button><button id="ssoConfirmButton" type="button" class="btn primary">确认绑定</button></div>
+</dialog>
+<script src="/static/keycloak-bind.js"></script>
+<script src="/static/ripple.js"></script>
+</body>
+</html>

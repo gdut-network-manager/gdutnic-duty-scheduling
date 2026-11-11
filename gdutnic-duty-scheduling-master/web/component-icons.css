@@ -1,0 +1,92 @@
+/* Decorative SVG masks keep accessible names in the visible text.
+   Only explicitly marked content components participate; the sidebar is unchanged. */
+[data-icon]::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  background-color: currentColor;
+  -webkit-mask: var(--component-icon) center / contain no-repeat;
+  mask: var(--component-icon) center / contain no-repeat;
+  pointer-events: none;
+}
+.btn[data-icon] { gap: 6.4px; }
+h1[data-icon], h2[data-icon], h3[data-icon] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+h1[data-icon]::before {
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
+  color: var(--md-primary);
+}
+h2[data-icon]::before, h3[data-icon]::before { color: var(--md-primary); }
+.stats > .stat-with-icon { position: relative; padding-right: 48px; }
+.stat-with-icon::before {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 24px;
+  height: 24px;
+  opacity: .65;
+}
+.member-search[data-icon] { position: relative; display: inline-flex; align-items: center; }
+.member-search[data-icon]::before { position: absolute; left: 12px; color: var(--md-secondary); }
+.member-search[data-icon] input { padding-left: 38px; }
+@media (max-width: 650px) {
+  .stats > .stat-with-icon { padding-right: 32px; }
+  .stat-with-icon::before { width: 18px; height: 18px; right: 9.6px; top: 12.8px; }
+}
+@media (forced-colors: active) {
+  [data-icon]::before { background-color: CanvasText; }
+  .btn[data-icon]::before { background-color: ButtonText; }
+}
+[data-icon="account-check-outline"] { --component-icon: url("/icon/components/account-check-outline.svg"); }
+[data-icon="account-group-outline"] { --component-icon: url("/icon/components/account-group-outline.svg"); }
+[data-icon="account-off-outline"] { --component-icon: url("/icon/components/account-off-outline.svg"); }
+[data-icon="account-plus-outline"] { --component-icon: url("/icon/components/account-plus-outline.svg"); }
+[data-icon="calendar-check-outline"] { --component-icon: url("/icon/components/calendar-check-outline.svg"); }
+[data-icon="calendar-clock-outline"] { --component-icon: url("/icon/components/calendar-clock-outline.svg"); }
+[data-icon="calendar-outline"] { --component-icon: url("/icon/components/calendar-outline.svg"); }
+[data-icon="calendar-remove-outline"] { --component-icon: url("/icon/components/calendar-remove-outline.svg"); }
+[data-icon="calendar-week-outline"] { --component-icon: url("/icon/components/calendar-week-outline.svg"); }
+[data-icon="chart-box-outline"] { --component-icon: url("/icon/components/chart-box-outline.svg"); }
+[data-icon="chevron-left"] { --component-icon: url("/icon/components/chevron-left.svg"); }
+[data-icon="chevron-right"] { --component-icon: url("/icon/components/chevron-right.svg"); }
+[data-icon="clipboard-text-outline"] { --component-icon: url("/icon/components/clipboard-text-outline.svg"); }
+[data-icon="clock-alert-outline"] { --component-icon: url("/icon/components/clock-alert-outline.svg"); }
+[data-icon="clock-outline"] { --component-icon: url("/icon/components/clock-outline.svg"); }
+[data-icon="close"] { --component-icon: url("/icon/components/close.svg"); }
+[data-icon="content-save-outline"] { --component-icon: url("/icon/components/content-save-outline.svg"); }
+[data-icon="email-outline"] { --component-icon: url("/icon/components/email-outline.svg"); }
+[data-icon="send"] { --component-icon: url("/icon/components/send.svg"); }
+[data-icon="database-outline"] { --component-icon: url("/icon/components/database-outline.svg"); }
+[data-icon="delete-outline"] { --component-icon: url("/icon/components/delete-outline.svg"); }
+[data-icon="download"] { --component-icon: url("/icon/components/download.svg"); }
+[data-icon="lock-outline"] { --component-icon: url("/icon/components/lock-outline.svg"); }
+[data-icon="lock-reset"] { --component-icon: url("/icon/components/lock-reset.svg"); }
+[data-icon="login"] { --component-icon: url("/icon/components/login.svg"); }
+[data-icon="logout"] { --component-icon: url("/icon/components/logout.svg"); }
+[data-icon="magnify"] { --component-icon: url("/icon/components/magnify.svg"); }
+[data-icon="map-marker-check-outline"] { --component-icon: url("/icon/components/map-marker-check-outline.svg"); }
+[data-icon="pencil-outline"] { --component-icon: url("/icon/components/pencil-outline.svg"); }
+[data-icon="plus"] { --component-icon: url("/icon/components/plus.svg"); }
+[data-icon="refresh"] { --component-icon: url("/icon/components/refresh.svg"); }
+[data-icon="shield-account-outline"] { --component-icon: url("/icon/components/shield-account-outline.svg"); }
+[data-icon="swap-horizontal"] { --component-icon: url("/icon/components/swap-horizontal.svg"); }
+[data-icon="tune-variant"] { --component-icon: url("/icon/components/tune-variant.svg"); }
+[data-icon="upload"] { --component-icon: url("/icon/components/upload.svg"); }
+
+.stats.overview-stats > .stat-with-icon::before {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+[data-icon="eye-outline"] { --component-icon: url("/icon/components/eye-outline.svg"); }
+[data-icon="eye-off-outline"] { --component-icon: url("/icon/components/eye-off-outline.svg"); }
+.password-visibility[data-icon]::before { width: 20px; height: 20px; flex-basis: 20px; }
+
+[data-icon="link-off-outline"] { --component-icon: url("/icon/components/link-off-outline.svg"); }

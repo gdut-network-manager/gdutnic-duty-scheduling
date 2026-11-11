@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>网络服务协会 · 排班管理</title>
+  <link rel="icon" href="/icon/gdutnic.png">
+  <meta name="theme-color" content="#186078">
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/schedule.css">
+  <link rel="stylesheet" href="/static/component-icons.css">
+<link rel="stylesheet" href="/static/auth-background.css">
+<script src="/static/auth-background.js" defer></script>
+</head>
+<body data-admin="true">
+<section id="authCard" class="admin-board">
+  <div class="admin-board-left">
+    <div class="admin-logo"><img src="/icon/gdutnic.png" alt="网协标志"></div>
+    <h1 id="authTitle">管理员登录</h1>
+    <p id="authHint">登录后维护班次与值班人员，查看签到记录。</p>
+  </div>
+  <form id="authForm" method="post" class="admin-board-right">
+    <label class="outlined-field"><input name="username" autocomplete="username" placeholder=" " required><span>用户名</span></label>
+    <label class="outlined-field"><input name="password" type="password" autocomplete="current-password" placeholder=" " required><span>密码</span></label>
+    <p id="authStatus" class="admin-auth-status" role="alert"></p>
+    <div class="auth-actions"><button type="button" class="btn tonal" data-keycloak-login="admin" hidden><img class="sso-org-icon" src="/icon/gdutnic.png" alt="" aria-hidden="true"><span>通过GDUTNIC</span></button><button id="authSubmit" class="btn primary" data-icon="login">登录</button></div>
+  </form>
+</section>
+<div id="workspace" class="ga-app is-visible" hidden>
+  <aside class="ga-nav">
+    <div class="ga-brand">
+      <div class="mark"><img src="/icon/gdutnic.png" alt="网协标志"></div>
+      <div><h1>网络服务协会</h1></div>
+    </div>
+    <nav>
+      <button type="button" id="dailyTab" class="ga-nav-item active">概览</button>
+      <button type="button" id="weeklyTab" class="ga-nav-item">每周排班</button>
+      <button type="button" id="specialTab" class="ga-nav-item">特殊排班</button>
+      <button type="button" id="swapTab" class="ga-nav-item">调换值班</button>
+      <button type="button" id="fieldTab" class="ga-nav-item">外勤管理</button>
+      <button type="button" id="membersTab" class="ga-nav-item">用户管理</button>
+      <button type="button" id="permissionGroupsTab" class="ga-nav-item">权限组管理</button>
+      <button type="button" id="pushTab" class="ga-nav-item">消息推送</button>
+      <button type="button" id="logsTab" class="ga-nav-item">查看日志</button>
+      <button type="button" id="dataTab" class="ga-nav-item">数据管理</button>
+      <button type="button" id="settingsTab" class="ga-nav-item">其他设置</button>
+    </nav>
+    <div class="panel-footer"><button id="logout" class="btn danger" hidden>退出登录</button></div>
+  </aside>
+  <main class="ga-main">
+    <div class="ga-main-body">
+      <section id="dailyPage">
+        <section class="hero">
+          <div><p class="eyebrow">GDUT NETWORK INFORMATION CENTER</p><h1 data-icon="chart-box-outline">概览</h1><p>查看本月出勤情况、当前值班与本周排班。</p></div>
+
+        </section>
+        <div class="stats overview-stats">
+          <div data-icon="calendar-check-outline" class="stat-with-icon"><strong id="attendanceRate">—</strong><span id="attendanceDetail">本月出勤率（正常 / 总出勤）</span></div>
+          <div data-icon="clock-alert-outline" class="stat-with-icon"><strong id="lateCount">0</strong><span>本月迟到数</span></div>
+          <div data-icon="account-off-outline" class="stat-with-icon"><strong id="absentCount">0</strong><span>本月旷班数</span></div>
+        </div>
+        <div class="section-head"><h2 data-icon="clock-outline">当前值班</h2><div><button id="refresh" class="btn tonal" data-icon="refresh">刷新</button><button id="add" class="btn primary" data-icon="plus">新增班次</button></div></div>
+        <div id="shiftTimeline" class="shift-timeline"></div>
+        <p id="status" role="status" aria-live="polite"></p>
+        <section class="section-head range-head"><h2 id="weekTitle" data-icon="calendar-week-outline">本周排班</h2><div class="range-nav"><button type="button" id="weekPrev" class="btn tonal icon-btn" data-icon="chevron-left" aria-label="上一周" title="上一周" disabled></button><span id="weekRange" class="hint range-label"></span><button type="button" id="weekNext" class="btn tonal icon-btn" data-icon="chevron-right" aria-label="下一周" title="下一周" disabled></button><span class="range-today"><button type="button" id="weekToday" class="btn tonal" data-icon="calendar-outline">回到本周</button><button type="button" id="weekClear" class="btn danger" data-icon="calendar-remove-outline" disabled>删除本周排班</button></span></div></section>
+        <section id="weekBoard" class="week-board"></section>
+        <section class="section-head anomaly-head">
+          <h2 data-icon="chart-box-outline">异常统计</h2>
+          <div class="segmented" role="group" aria-label="统计周期">
+            <button type="button" id="anomaly2" class="segment active" data-weeks="2">近 2 周</button>
+            <button type="button" id="anomaly4" class="segment" data-weeks="4">近 4 周</button>
+          </div>
+        </section>
+        <p id="anomalyRange" class="hint"></p>
+        <div class="anomaly-board">
+          <section class="card anomaly-card" id="lateCard">
+            <div class="anomaly-title"><h3 data-icon="clock-alert-outline">迟到排行</h3><span id="lateTotal" class="anomaly-total"></span></div>
+            <div id="lateChart" class="anomaly-chart"></div>
+          </section>
+          <section class="card anomaly-card" id="absentCard">
+            <div class="anomaly-title"><h3 data-icon="account-off-outline">旷班次数</h3><span id="absentTotal" class="anomaly-total"></span></div>
+            <div id="absentChart" class="anomaly-chart"></div>
+          </section>
+        </div>
+        <section id="shifts" class="shifts" hidden></section>
+      </section>
+
+      <section id="weeklyPage" hidden>
+        <div class="hero"><div><h1 data-icon="calendar-week-outline">每周排班</h1><p>维护周一到周日的固定人员，自动匹配星期，生成到指定日期。</p></div></div>
+        <form id="weeklyForm" method="post">
+          <div class="card weekly-config"><div id="weeklyTimes" class="weekly-times"></div></div>
+          <div class="weekly-table-wrap">
+            <div class="weekly-table-tools">
+              <span>可从 CSV 自动填充人员，模板第一行为星期、第一列为班次，多人与“/”分隔。</span>
+              <div class="actions">
+                <button type="button" id="downloadRoster" class="btn tonal" data-icon="download">下载 CSV 模板</button>
+                <button type="button" id="importRoster" class="btn primary" data-icon="upload">一键导入</button>
+                <input id="rosterFile" type="file" accept=".csv,text/csv,text/plain" hidden>
+              </div>
+            </div>
+            <table class="weekly-table">
+              <caption>每周固定排班表 · 每格一行一位人员</caption>
+              <thead><tr><th scope="col">班次</th><th scope="col">周一</th><th scope="col">周二</th><th scope="col">周三</th><th scope="col">周四</th><th scope="col">周五</th><th scope="col">周六</th><th scope="col">周日</th></tr></thead>
+              <tbody id="weeklyGrid"></tbody>
+            </table>
+          </div>
+          <label class="review-check"><input id="weeklyReviewed" type="checkbox"><span>我已核对人员姓名</span></label>
+          <div class="actions">
+            <button type="button" id="completeMembers" class="btn tonal" data-icon="account-plus-outline">补全用户</button>
+            <button type="submit" class="btn primary" data-icon="content-save-outline">保存每周排班</button>
+            <button type="button" id="clearSchedules" class="btn danger" data-icon="calendar-remove-outline">清除所有排班</button>
+          </div>
+        </form>
+        <div class="card publish-card">
+          <h2 data-icon="calendar-check-outline">生成排班</h2>
+          <p>按已保存的每周固定排班表匹配星期，在所选日期区间内生成班次。区间内已生成或时间冲突的班次会被新排班覆盖；已有人打卡的班次会跳过，不会覆盖签到记录。</p>
+          <div class="publish-range">
+            <label for="generateFrom">排班开始于<input id="generateFrom" type="date" required></label>
+            <span class="publish-arrow">→</span>
+            <label for="generateUntil">排班结束于<input id="generateUntil" type="date" required></label>
+          </div>
+          <form id="publishForm" method="post" class="publish-form">
+            <button type="submit" class="btn primary" data-icon="calendar-check-outline">生成排班表</button>
+          </form>
+        </div>
+        <p id="weeklyStatus" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="specialPage" hidden>
+        <div class="hero">
+          <div><h1 data-icon="calendar-clock-outline">特殊排班</h1><p>单独添加临时班次，可一次安排多位值班人员，保存后可按日期查看并修改。</p></div>
+          <button id="addSpecial" class="btn primary" data-icon="plus">新增特殊排班</button>
+        </div>
+        <div class="stats">
+          <div data-icon="calendar-clock-outline" class="stat-with-icon"><strong id="specialCount">0</strong><span>个未来特殊班次</span></div>
+          <div data-icon="account-group-outline" class="stat-with-icon"><strong id="specialPeople">0</strong><span>人次排班</span></div>
+        </div>
+        <div class="section-head"><h2 data-icon="calendar-clock-outline">未来特殊排班</h2><div><button id="refreshSpecial" class="btn tonal" data-icon="refresh">刷新</button></div></div>
+        <p id="specialStatus" role="status" aria-live="polite"></p>
+        <section id="specialList" class="shifts"></section>
+      </section>
+
+      <section id="swapPage" hidden>
+        <div class="hero">
+          <div><h1 data-icon="swap-horizontal">调换值班</h1><p>两位值班人员互换各自的一个班次，需双方协商同意。班次开始后无法再删除，双方都完成签到后记录自动消失。</p></div>
+          <button id="addSwap" class="btn primary" data-icon="plus">添加调班</button>
+        </div>
+        <p id="swapStatus" role="status" aria-live="polite"></p>
+        <section id="swapList" class="shifts"></section>
+      </section>
+
+      <section id="pushPage" hidden>
+        <div class="hero"><div><h1 data-icon="email-outline">消息推送</h1><p>让每个完整周期的考勤情况，按时抵达收件箱。</p></div><button id="pushSave" class="btn primary" data-icon="content-save-outline">保存推送设置</button></div>
+        <div class="card push-settings">
+          <div class="section-head"><h2>发送计划</h2><label class="push-switch"><input id="pushEnabled" type="checkbox"><span>启用定时推送</span></label></div>
+          <label for="pushAddress">目标邮箱</label>
+          <form id="pushRecipientForm" class="push-address-form"><input id="pushAddress" type="email" autocomplete="email" placeholder="name@example.com" required aria-label="目标邮箱"><button class="btn tonal" data-icon="plus">添加邮箱</button></form>
+          <div id="pushRecipients" class="push-recipients" aria-label="已添加的目标邮箱"></div>
+          <div class="push-plan"><label>推送频率<select id="pushWeeks"><option value="1">1 周 / 次</option><option value="2">2 周 / 次</option><option value="4">4 周 / 次</option></select></label><label>周日发件时间<input id="pushTime" type="time" value="09:00" required></label><div class="push-cutoff"><strong>周六 23:59 截止</strong><span>北京时间 · 按周日到周六汇总</span></div></div>
+          <p id="pushNext" class="hint"></p><p id="pushSmtp" class="hint"></p>
+          <p id="pushStatus" role="status" aria-live="polite"></p>
+        </div>
+        <div class="section-head push-preview-head"><div><h2>邮件格式</h2><p class="hint">双击标题、开头或结尾编辑。勾选列以展示；短按列名排序，长按拖动调序。</p></div><label class="push-switch"><input id="pushSample" type="checkbox" checked><span>使用示例数据</span></label></div>
+        <div class="push-window">
+          <div class="push-window-bar"><span id="pushPreviewRange">邮件预览</span><span id="pushPreviewBadge">示例数据 · 仅预览，不会发送</span></div>
+          <div class="push-letter">
+            <div id="pushTitle" class="push-editable push-title" tabindex="0" role="button" aria-label="双击编辑标题"></div>
+            <div id="pushOpening" class="push-editable" tabindex="0" role="button" aria-label="双击编辑开头"></div>
+            <div id="pushSections"></div>
+            <div id="pushClosing" class="push-editable" tabindex="0" role="button" aria-label="双击编辑结尾"></div>
+          </div>
+        </div>
+        <p id="pushPreviewStatus" class="hint" role="status" aria-live="polite"></p>
+        <details class="card push-history"><summary>最近发送记录</summary><div id="pushDeliveries"></div></details>
+      </section>
+      <dialog id="pushEditor"><form id="pushEditorForm"><div class="section-head"><h2 id="pushEditorTitle">编辑格式</h2><button type="button" id="pushEditorClose" class="btn tonal" data-icon="close">关闭</button></div><label id="pushEditorLabel">内容<textarea id="pushEditorValue" rows="6"></textarea></label><p class="hint">可用占位符：{开始日期}、{结束日期}、{周期周数}。发送时自动替换。</p><p id="pushEditorStatus" role="alert"></p><button class="btn primary" data-icon="content-save-outline">应用到预览</button></form></dialog>
+
+      <section id="permissionGroupsPage" hidden>
+        <div class="hero">
+          <div><h1 data-icon="shield-account-outline">权限组管理</h1><p>以权限组统一管理访问范围。展开权限组，选择成员可以访问的页面。</p></div>
+          <button id="addPermissionGroup" class="btn primary" data-icon="plus">新建权限组</button>
+        </div>
+        <p id="permissionGroupsStatus" role="status" aria-live="polite"></p>
+        <div id="permissionGroupList" class="permission-group-list"></div>
+      </section>
+
+      <section id="membersPage" hidden>
+        <div class="hero">
+          <div><h1 data-icon="account-group-outline">用户管理</h1><p>按权限组管理账号。新账号默认加入会员组，初始密码为 gg2017。</p></div>
+          <div class="hero-actions">
+            <label class="member-search" data-icon="magnify"><input id="memberSearch" type="search" placeholder="搜索姓名" autocomplete="off" aria-label="搜索用户"></label>
+            <button id="addMember" class="btn primary" data-icon="account-plus-outline">添加账号</button>
+            <button id="cleanupMembers" class="btn danger" data-icon="account-off-outline">清理多余用户</button>
+          </div>
+        </div>
+        <p id="membersStatus" role="status" aria-live="polite"></p>
+        <section id="memberList" class="shifts"></section>
+      </section>
+
+      <section id="fieldPage" hidden>
+        <div class="hero">
+          <div><h1 data-icon="map-marker-check-outline">外勤管理</h1><p>查看本月参与外勤的成员，未参与者标红。</p></div>
+        </div>
+        <section class="section-head range-head">
+          <h2 id="fieldTitle" data-icon="calendar-week-outline">本月外勤</h2>
+          <div class="range-nav">
+            <button id="fieldPrev" class="btn tonal icon-btn" data-icon="chevron-left" aria-label="上个月" title="上个月" type="button" disabled></button>
+            <span id="fieldRange" class="hint range-label"></span>
+            <button id="fieldNext" class="btn tonal icon-btn" data-icon="chevron-right" aria-label="下个月" title="下个月" type="button" disabled></button>
+            <span class="range-today"><button id="fieldToday" class="btn tonal" data-icon="calendar-outline" type="button" hidden>回到本月</button><button id="fieldClear" class="btn danger" data-icon="calendar-remove-outline" type="button" disabled>删除本月外勤</button></span>
+          </div>
+        </section>
+        <div class="stats overview-stats">
+          <div data-icon="map-marker-check-outline" class="stat-with-icon"><strong id="fieldRegistered">0</strong><span id="fieldSummary">本月已参加外勤</span></div>
+        </div>
+        <p id="fieldAdminStatus" role="status" aria-live="polite"></p>
+        <section id="fieldBoard" class="field-grid"></section>
+      </section>
+
+      <section id="logsPage" hidden>
+        <div class="hero">
+          <div><h1 data-icon="clipboard-text-outline">查看日志</h1><p>记录管理员与值班账号的操作，最新在前。</p></div>
+        </div>
+        <div class="log-toolbar">
+          <label class="member-search" data-icon="magnify"><input id="logSearch" type="search" placeholder="搜索操作或内容" autocomplete="off" aria-label="搜索日志"></label>
+          <label class="log-actor"><select id="logActor"><option value="">全部账号</option></select></label>
+          <button id="logRefresh" class="btn tonal" type="button" data-icon="refresh">刷新</button>
+        </div>
+        <p id="logsStatus" role="status" aria-live="polite"></p>
+        <div class="log-table-wrap">
+          <table class="log-table">
+            <thead><tr><th scope="col">时间</th><th scope="col">操作账号</th><th scope="col">操作内容</th></tr></thead>
+            <tbody id="logRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="settingsPage" hidden>
+        <div class="hero"><div><h1 data-icon="tune-variant">其他设置</h1><p>管理签到规则、打卡网络、SSO、无操作登录时限与系统设置。</p></div></div>
+        <form id="rulesForm" method="post" class="card rules-card">
+          <h2 data-icon="clock-outline">值班时间</h2>
+          <p class="hint">以下时间均相对于班次开始时间计算。</p>
+          <div class="rules-grid">
+            <label>提前打卡时间（分钟）<input name="early_minutes" type="number" min="0" max="120" step="1" required></label>
+            <label>迟到时间（分钟）<input name="late_minutes" type="number" min="0" max="240" step="1" required></label>
+            <label>旷班时间（分钟）<input name="absent_minutes" type="number" min="1" max="480" step="1" required></label>
+          </div>
+          <p class="hint">三个时间都从班次开始时间起算。提前打卡：开始前多少分钟起显示“确认到岗签到”。迟到：开始后多少分钟内的签到记为迟到。旷班：开始后超过多少分钟仍未签到，或超过该时间才签到，都记为旷班；因此旷班时间必须大于迟到时间。</p>
+          <p id="rulesStatus" role="status" aria-live="polite"></p>
+          <button type="submit" class="btn primary" data-icon="content-save-outline">保存设置</button>
+        </form>
+
+        <form id="sessionTimeoutForm" method="post" class="card rules-card" hidden>
+          <h2 data-icon="clock-outline">无操作自动退出</h2>
+          <p class="hint">超过设定时间没有鼠标、键盘或触摸操作，将自动退出对应登录并刷新页面。后台刷新数据不会延长登录时间。</p>
+          <div class="rules-grid">
+            <label>成员页面无操作时限（分钟）<input name="member_minutes" type="number" min="1" max="240" step="1" value="120" required></label>
+            <label>管理页面无操作时限（分钟）<input name="admin_minutes" type="number" min="1" max="240" step="1" value="30" required></label>
+          </div>
+          <p class="hint">默认成员端 120 分钟、管理端 30 分钟。可设置 1～240 分钟；在同一浏览器的任一同端标签页操作都会续期。</p>
+          <h3 class="settings-subheading" data-icon="clock-alert-outline">无响应自动退出</h3>
+          <p class="hint">全局检测已登录设备的心跳。超过以下时限未收到响应，撤销该设备的登录；心跳不会延长上方的无操作时限。</p>
+          <div class="rules-grid">
+            <label>成员页面无响应时限（秒）<input name="member_response_seconds" type="number" min="30" max="3600" step="1" value="90" required></label>
+            <label>管理页面无响应时限（秒）<input name="admin_response_seconds" type="number" min="30" max="3600" step="1" value="90" required></label>
+          </div>
+          <p class="hint">默认均为 90 秒，可设置 30～3600 秒。同一浏览器同一端的标签页共享心跳，其他设备独立检测。</p>
+          <p id="sessionTimeoutStatus" role="status" aria-live="polite"></p>
+          <button type="submit" class="btn primary" data-icon="content-save-outline">保存自动退出设置</button>
+        </form>
+
+        <form id="clockForm" method="post" class="card rules-card">
+          <h2 data-icon="clock-outline">系统时间</h2>
+          <label class="review-check"><input id="clockAutomatic" type="checkbox" checked><span>自动设置</span></label>
+          <div id="clockManual" class="clock-manual" hidden>
+            <label>日期<input id="clockDate" type="date" required></label>
+            <label>小时<input id="clockHour" type="number" min="0" max="23" step="1" value="9" required></label>
+            <label>分钟<input id="clockMinute" type="number" min="0" max="59" step="1" value="0" required></label>
+          </div>
+          <p class="hint">取消自动设置后，按下「设置」会从所选的日期 小时:分钟:00 开始计时，签到窗口与统计都按该时间计算。</p>
+          <p id="clockStatus" role="status" aria-live="polite"></p>
+          <button type="submit" class="btn primary" data-icon="tune-variant">设置</button>
+          <p class="clock-now">当前时间：<strong id="clockNow">—</strong></p>
+        </form>
+
+        <form id="smtpForm" method="post" class="card rules-card" hidden>
+          <h2 data-icon="email-outline">SMTP 发件邮箱</h2>
+          <p class="hint">用于系统发送邮件。密码只保存在服务器配置中，页面不会回显已保存的明文。</p>
+          <div class="rules-grid">
+            <label>SMTP 服务器<input name="host" id="smtpHost" type="text" autocomplete="off" placeholder="smtp.example.com"></label>
+            <label>端口<input name="port" id="smtpPort" type="number" min="1" max="65535" step="1" placeholder="465"></label>
+            <label>加密方式
+              <select name="security" id="smtpSecurity">
+                <option value="ssl">SSL</option>
+                <option value="starttls">STARTTLS</option>
+                <option value="none">None</option>
+              </select>
+            </label>
+          </div>
+          <div class="rules-grid">
+            <label>登录账号<input name="username" id="smtpUsername" type="text" autocomplete="off" placeholder="user@example.com"></label>
+            <label>登录密码<input name="password" id="smtpPassword" type="password" autocomplete="new-password" placeholder="留空表示不修改"></label>
+          </div>
+          <div class="rules-grid">
+            <label>发件邮箱<input name="from_address" id="smtpFromAddress" type="text" autocomplete="off" placeholder="noreply@example.com"></label>
+            <label>发件人名称<input name="from_name" id="smtpFromName" type="text" autocomplete="off" placeholder="网络服务协会"></label>
+          </div>
+          <label class="review-check"><input id="smtpEnabled" type="checkbox"><span>启用 SMTP</span></label>
+          <p id="smtpStatus" role="status" aria-live="polite"></p>
+          <div class="actions">
+            <button type="submit" class="btn primary" data-icon="content-save-outline">保存 SMTP 设置</button>
+            <button type="button" id="smtpTest" class="btn tonal" data-icon="send">发送测试邮件</button>
+          </div>
+        </form>
+
+      <section id="checkinSettingsSection" hidden>
+        <form id="checkinAccessForm" class="card checkin-access-form">
+          <h2 data-icon="calendar-check-outline">打卡设置</h2>
+          <p class="hint">分别设置打卡和外勤登记可使用的网络。</p>
+          <p class="hint">每行填写一个 IP、网段或 localhost。允许：仅列表内的地址可用；排除：列表内的地址不可用。排除列表留空表示不限制，允许列表留空表示全部禁用。</p>
+          <p class="hint">支持 192.168.1.10、192.168.1.0/24、192.168.1.0/255.255.255.0 和 IPv6。localhost 匹配 127.0.0.0/8 与 ::1，以服务器识别的来源地址为准。</p>
+          <div class="checkin-access-grid">
+            <fieldset><legend>打卡</legend>
+              <label for="checkinAccessMode">匹配方式</label><select id="checkinAccessMode" name="checkin_mode"><option value="exclude">排除以下地址</option><option value="allow">仅允许以下地址</option></select>
+              <label for="checkinAccessEntries">IP / 掩码（一行一个）</label><textarea id="checkinAccessEntries" name="checkin_entries" rows="8" spellcheck="false" placeholder="192.168.1.0/24&#10;localhost" maxlength="20000"></textarea>
+            </fieldset>
+            <fieldset><legend>外勤</legend>
+              <label for="fieldAccessMode">匹配方式</label><select id="fieldAccessMode" name="field_mode"><option value="exclude">排除以下地址</option><option value="allow">仅允许以下地址</option></select>
+              <label for="fieldAccessEntries">IP / 掩码（一行一个）</label><textarea id="fieldAccessEntries" name="field_entries" rows="8" spellcheck="false" placeholder="192.168.1.0/24&#10;localhost" maxlength="20000"></textarea>
+            </fieldset>
+          </div><p id="checkinAccessPeer" class="hint"></p><p id="checkinAccessStatus" role="status" aria-live="polite"></p>
+          <button type="submit" class="btn primary">保存网络规则</button>
+        </form>
+      </section>
+      <section id="ssoSettingsSection" hidden>
+        <form id="ssoConfigForm" class="card sso-config" method="post">
+          <h2 data-icon="shield-account-outline">SSO 设置</h2>
+          <p class="hint">连接 GDUTNIC 统一身份认证，让成员使用同一个账号登录。</p>
+          <fieldset id="ssoFields" disabled>
+            <section class="sso-enable-card">
+              <div><h3>在登录页显示 SSO</h3><p class="hint">默认关闭。开启并保存完整配置后，登录页会显示“通过GDUTNIC”。</p></div>
+              <label class="sso-toggle"><input id="ssoEnabled" type="checkbox" role="switch" aria-label="在登录页显示 SSO"><span aria-hidden="true"></span></label>
+            </section>
+            <section class="sso-config-card">
+              <h3>身份认证服务</h3><p class="hint">填写 Keycloak 为本应用分配的地址和客户端信息。</p>
+              <div class="sso-grid">
+                <div class="sso-wide"><label class="outlined-field"><input id="ssoIssuer" type="url" placeholder=" " maxlength="2048"><span>身份提供方地址（Issuer）</span></label><p class="hint">填写身份提供方的 Realm 地址，例如 https://你的域名/realms/你的Realm。</p></div>
+                <div><label class="outlined-field"><input id="ssoClientId" type="text" placeholder=" " autocomplete="off" maxlength="2048"><span>客户端标识（Client ID）</span></label></div>
+                <div><label for="ssoClientType">客户端类型</label><select id="ssoClientType"><option value="public">公开客户端 · 无需密钥</option><option value="confidential">机密客户端 · 使用密钥</option></select></div>
+                <div id="ssoSecretField" class="sso-wide" hidden><label class="outlined-field"><input id="ssoClientSecret" type="password" placeholder=" " autocomplete="new-password" maxlength="4096"><span>客户端密钥（Client Secret）</span></label><p id="ssoSecretHint" class="hint">填写 Keycloak 为此客户端生成的密钥。</p><label id="ssoClearSecretRow" class="review-check" hidden><input id="ssoClearSecret" type="checkbox"><span>清除已保存的密钥</span></label></div>
+              </div>
+            </section>
+            <section class="sso-config-card">
+              <h3>登录回调与账号匹配</h3>
+              <label class="outlined-field"><input id="ssoRedirectUri" type="url" placeholder=" " maxlength="2048"><span>登录回调地址（Redirect URI）</span></label>
+              <p class="hint">请将完整地址同时添加到 Keycloak 的“有效重定向 URI”。路径为 /api/auth/keycloak/callback。</p>
+              <div class="sso-match-row"><label for="ssoClaimSelect">自动匹配本地账号的字段</label><select id="ssoClaimSelect"><option value="">不自动匹配 · 验证本地密码后绑定</option><option value="preferred_username">登录用户名（preferred_username）</option><option value="name">姓名（name）</option><option value="custom">其他组织维护的字段</option></select></div>
+              <label id="ssoCustomClaimField" class="outlined-field" hidden><input id="ssoCustomClaim" type="text" placeholder=" " maxlength="255"><span>自定义字段名称</span></label>
+              <p class="hint">首次接入建议先使用密码绑定，确认实际返回字段后再开启自动匹配。仅使用由组织维护、用户不能任意修改的字段；字段值需与本地用户名一致。</p>
+            </section>
+            <div class="sso-actions"><p id="ssoConfigStatus" role="status" aria-live="polite"></p><div class="actions"><button id="ssoTest" type="button" class="btn tonal">测试服务连接</button><button id="ssoSave" type="submit" class="btn primary" data-icon="content-save-outline">保存 SSO 配置</button></div></div>
+          </fieldset>
+        </form>
+      </section>
+
+        <form id="rootPasswordForm" method="post" class="card rules-card" hidden>
+          <h2 data-icon="shield-account-outline">原始管理员密码</h2>
+          <p class="hint">原始管理员拥有不可更改的最高权限，名称固定、不出现在用户管理中，凭据单独保存在 data/root_admin.json。这里只能修改密码。</p>
+          <label>新密码<input name="password" id="rootNewPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required></label>
+          <label>再次输入<input name="confirm" id="rootConfirmPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required></label>
+          <p id="rootPasswordStatus" role="status" aria-live="polite"></p>
+          <button type="submit" class="btn primary" data-icon="lock-reset">修改密码</button>
+        </form>
+      </section>
+
+      <dialog id="clearDialog">
+        <form id="clearForm">
+          <div class="section-head"><h2>确认清除所有排班</h2><button type="button" id="closeClear" class="btn tonal" data-icon="close">取消</button></div>
+          <p>此操作会删除所有日期的班次及签到记录，<strong>无法撤销</strong>。每周固定排班表和用户账号会保留。</p>
+          <label>请输入“清除所有排班”以确认<input name="confirm" autocomplete="off" placeholder="清除所有排班" required></label>
+          <p id="clearStatus" role="alert"></p>
+          <button type="submit" class="btn danger" data-icon="delete-outline">确认清除</button>
+        </form>
+      </dialog>
+
+      <section id="dataPage" hidden>
+        <div class="hero">
+          <div><h1 data-icon="database-outline">数据管理</h1><p>直接查看数据库中的记录，可预览、编辑和删除。密码与密钥类字段不显示也无法在此修改。</p></div>
+        </div>
+        <div class="data-layout">
+          <nav id="dataTables" class="data-tables" aria-label="数据表"></nav>
+          <div class="data-main">
+            <div class="data-toolbar">
+              <label class="member-search" data-icon="magnify"><input id="dataSearch" type="search" placeholder="在表中搜索" autocomplete="off" aria-label="搜索当前表"></label>
+              <button id="dataRefresh" class="btn tonal" type="button" data-icon="refresh">刷新</button>
+            </div>
+            <p id="dataStatus" role="status" aria-live="polite"></p>
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead id="dataHead"></thead>
+                <tbody id="dataRows"></tbody>
+              </table>
+            </div>
+            <div class="data-pager">
+              <button id="dataClearSelected" class="btn danger" type="button" data-icon="delete-outline" hidden>清除选中</button>
+              <button id="dataClearPage" class="btn danger" type="button" data-icon="calendar-remove-outline" disabled>清除该页</button>
+              <span class="data-pager-spacer"></span>
+              <button id="dataPrev" class="btn tonal icon-btn" type="button" data-icon="chevron-left" aria-label="上一页" disabled></button>
+              <span id="dataRange" class="hint range-label"></span>
+              <button id="dataNext" class="btn tonal icon-btn" type="button" data-icon="chevron-right" aria-label="下一页" disabled></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <dialog id="dataEditDialog">
+        <form id="dataEditForm">
+          <div class="section-head"><h2 id="dataEditTitle">编辑记录</h2><button type="button" id="closeDataEdit" class="btn tonal" data-icon="close">取消</button></div>
+          <p id="dataEditMeta" class="hint"></p>
+          <div id="dataEditFields" class="data-edit-fields"></div>
+          <p id="dataEditStatus" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="content-save-outline">保存修改</button>
+        </form>
+      </dialog>
+
+      <dialog id="dataDeleteDialog">
+        <form id="dataDeleteForm">
+          <div class="section-head"><h2>确认删除记录</h2><button type="button" id="closeDataDelete" class="btn tonal" data-icon="close">取消</button></div>
+          <p id="dataDeleteBody"></p>
+          <p id="dataDeleteStatus" role="alert"></p>
+          <button type="submit" class="btn danger" data-icon="delete-outline">确认删除</button>
+        </form>
+      </dialog>
+
+      <dialog id="rangeClearDialog">
+        <form id="rangeClearForm">
+          <div class="section-head"><h2 id="rangeClearTitle">确认删除</h2><button type="button" id="closeRangeClear" class="btn tonal" data-icon="close">取消</button></div>
+          <p id="rangeClearBody"></p>
+          <p>请输入 <strong id="rangeClearPhrase"></strong> 以确认：</p>
+          <label>确认语<input name="confirm" autocomplete="off" placeholder="" required></label>
+          <p id="rangeClearStatus" role="alert"></p>
+          <button type="submit" class="btn danger" data-icon="delete-outline">确认删除</button>
+        </form>
+      </dialog>
+
+      <dialog id="editor">
+        <form id="shiftForm" method="post">
+          <div class="section-head"><h2 id="editorTitle">新增班次</h2><button type="button" id="closeEditor" class="btn tonal" data-icon="close">关闭</button></div>
+          <label>日期<input name="day" type="date" required></label>
+          <div class="two"><label>开始时间<input name="start" type="time" required></label><label>结束时间<input name="end" type="time" required></label></div>
+          <p class="hint">结束早于开始时，表示次日结束。</p>
+          <label>值班人员<textarea name="members" rows="4" placeholder="每行一位姓名，也可用逗号分隔" required></textarea></label>
+          <label>备注<textarea name="note" rows="2" maxlength="500" placeholder="值班事项或交接说明"></textarea></label>
+          <p id="formStatus" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="content-save-outline">保存班次</button>
+        </form>
+      </dialog>
+
+      <dialog id="detailDialog">
+        <div class="section-head"><h2 id="detailTitle">班次详情</h2><button type="button" id="closeDetail" class="btn tonal" data-icon="close">关闭</button></div>
+        <p id="detailMeta" class="hint"></p>
+        <div id="detailMembers" class="detail-members"></div>
+      </dialog>
+
+      <dialog id="permissionGroupCreateDialog">
+        <form id="permissionGroupCreateForm">
+          <div class="section-head"><h2>新建权限组</h2><button type="button" id="closePermissionGroupCreate" class="btn tonal" data-icon="close">取消</button></div>
+          <label>权限组名称<input name="name" maxlength="64" placeholder="例如：排班负责人" required></label>
+          <p class="hint">创建后展开权限组，设置可以访问的页面。</p>
+          <p id="permissionGroupCreateStatus" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="plus">创建权限组</button>
+        </form>
+      </dialog>
+
+      <dialog id="permissionDialog">
+        <form id="permissionForm">
+          <div class="section-head"><h2 id="permissionTitle">更改权限</h2><button type="button" id="closePermission" class="btn tonal" data-icon="close">关闭</button></div>
+          <p class="hint">选择该账号所属的权限组。访问范围统一在「权限组管理」中维护。</p>
+          <label>所属权限组<select id="permissionGroupSelect" required></select></label>
+          <p id="permissionGroupPreview" class="hint"></p>
+          <p id="permissionStatus" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="content-save-outline">保存权限组</button>
+        </form>
+      </dialog>
+
+      <dialog id="memberPasswordDialog">
+        <form id="memberPasswordForm">
+          <div class="section-head"><h2 id="memberPasswordTitle">更改密码</h2><button type="button" id="closeMemberPassword" class="btn tonal" data-icon="close">关闭</button></div>
+          <label>新密码<input name="password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required></label>
+          <p class="hint">保存后该账号的旧登录会立即失效。</p>
+          <p id="memberPasswordStatus" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="content-save-outline">保存密码</button>
+        </form>
+      </dialog>
+
+      <dialog id="swapDialog">
+        <form id="swapForm">
+          <div class="section-head"><h2>添加调班</h2><button type="button" id="closeSwap" class="btn tonal" data-icon="close">关闭</button></div>
+          <p class="hint">先选择两位人员，再分别选择他们各自的班次。</p>
+          <div class="swap-picker">
+            <label>甲方<select id="swapPersonA" required><option value="">选择人员</option></select></label>
+            <label>甲方班次<select id="swapShiftA" required disabled><option value="">请先选择人员</option></select></label>
+          </div>
+          <div class="swap-picker">
+            <label>乙方<select id="swapPersonB" required><option value="">选择人员</option></select></label>
+            <label>乙方班次<select id="swapShiftB" required disabled><option value="">请先选择人员</option></select></label>
+          </div>
+          <label class="review-check"><input id="swapConfirmed" type="checkbox"><span>双方已协商完成并同意调班</span></label>
+          <p id="swapFormStatus" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="swap-horizontal">确认调班</button>
+        </form>
+      </dialog>
+
+      <dialog id="editStatusDialog">
+        <form id="editStatusForm">
+          <div class="section-head"><h2 id="editStatusTitle">更改状态</h2><button type="button" id="closeEditStatus" class="btn tonal" data-icon="close">关闭</button></div>
+          <p id="editStatusMeta" class="hint"></p>
+          <div id="editStatusOptions" class="status-options"></div>
+          <p id="editStatusNote" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="content-save-outline">保存</button>
+        </form>
+      </dialog>
+
+      <dialog id="memberEditor">
+        <form id="memberForm" method="post">
+          <div class="section-head"><h2>添加账号</h2><button type="button" id="closeMember" class="btn tonal" data-icon="close">关闭</button></div>
+          <label>姓名<input name="username" maxlength="64" placeholder="值班人员姓名" required></label>
+          <p class="hint">初始密码为 gg2017，用户登录后可自行修改。</p>
+          <p id="memberFormStatus" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="account-plus-outline">创建账号</button>
+        </form>
+      </dialog>
+    </div>
+  </main>
+</div>
+<script src="/static/password-visibility.js"></script><script src="/static/animated-button.js"></script>
+<script src="/static/ripple.js"></script>
+<script src="/static/shift-timeline.js"></script>
+<script src="/static/checkin-window.js"></script>
+<script src="/static/schedule.js"></script>
+<script src="/static/status-editor.js"></script>
+<script src="/static/range-clear.js"></script>
+<script src="/static/week-board.js"></script>
+<script src="/static/overview.js"></script>
+<script src="/static/weekly.js"></script>
+<script src="/static/weekly-import.js"></script>
+<script src="/static/special.js"></script>
+<script src="/static/swaps.js"></script>
+<script src="/static/permission-tree.js"></script>
+<script src="/static/permission-groups.js"></script>
+<script src="/static/members.js"></script>
+<script src="/static/settings.js"></script>
+<script src="/static/checkin-access.js"></script>
+<script src="/static/sso-settings.js"></script>
+<script src="/static/logs.js"></script>
+<script src="/static/data-admin.js"></script>
+<script src="/static/field-admin.js"></script>
+<script src="/static/push-layout.js"></script>
+<script src="/static/push.js"></script>
+<script src="/static/keycloak-login.js"></script>
+<script src="/static/idle-session.js"></script><script src="/static/attendance-live.js"></script>
+</body>
+</html>
