@@ -283,7 +283,16 @@ cosign generate-key-pair
 cosign verify --key cosign.pub <镜像>
 ```
 
-用较新版本 cosign 生成的私钥，PEM 类型可能是 `ENCRYPTED SIGSTORE PRIVATE KEY`；它与 1.6.0 认识的 `ENCRYPTED COSIGN PRIVATE KEY` 格式相同，签名任务会自动改标签，不需要重新生成密钥。
+用较新版本 cosign 生成的私钥，PEM 类型可能是 `ENCRYPTED SIGSTORE PRIVATE KEY`。只改标签只对旧版 2.x 有效；较新的 cosign 使用 scrypt KDF，与流水线固定的 1.6.0 不兼容，会报 `unexpected kdf parameters`。请直接用 1.6.0 生成：
+
+```bash
+curl -fL -o /tmp/cosign.deb --insecure \
+  https://cn-gz-1.minio.gdutnic.com/gdutnic/public/cosign_1.6.0_amd64.deb
+sudo dpkg -i /tmp/cosign.deb
+export COSIGN_PASSWORD='请替换为一个强密码'
+/usr/local/bin/cosign-linux-amd64 generate-key-pair
+base64 -w0 cosign.key > cosign.key.b64
+```
 
 Runner tag：
 
