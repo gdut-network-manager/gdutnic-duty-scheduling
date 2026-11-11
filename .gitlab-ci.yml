@@ -151,7 +151,15 @@ image-sign:
     - job: helm-build
       artifacts: true
   before_script:
-    - sed -i 's|http://archive.ubuntu.com/ubuntu|https://mirrors.gdut.edu.cn/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://mirrors.gdut.edu.cn/ubuntu|g' /etc/apt/sources.list
+    # The base image has no CA bundle, so HTTPS apt sources fail before
+    # ca-certificates can be installed. Use the HTTP mirror to bootstrap.
+    - |
+      cat > /etc/apt/sources.list <<'EOF'
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-security main restricted universe multiverse
+      EOF
     - apt-get update -y
     - apt-get install -y --no-install-recommends ca-certificates curl
   script:
