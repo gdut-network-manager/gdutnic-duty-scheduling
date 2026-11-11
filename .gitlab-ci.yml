@@ -200,14 +200,22 @@ image-sign:
         exit 1
       fi
 
-      # cosign >= 2.x labels the same encrypted key as SIGSTORE, while the
-      # pinned cosign 1.6 only accepts the COSIGN label. The payload and
-      # encryption are identical, so normalize the PEM type instead of
-      # requiring a second key pair.
+      # cosign >= 2.x labels the key as SIGSTORE while the pinned cosign 1.6
+      # only accepts the COSIGN label. Older 2.x keys share the same KDF, so
+      # normalizing the label rescues those; newer keys use scrypt and are
+      # rejected by the preflight below with a clear message.
       sed -i 's/ENCRYPTED SIGSTORE PRIVATE KEY/ENCRYPTED COSIGN PRIVATE KEY/g' cosign.key
 
       chmod 600 cosign.key
       export COSIGN_PASSWORD="${COSIGN_PASSWORD:-}"
+
+      if ! cosign public-key --key cosign.key >/dev/null 2>&1; then
+        echo "COSIGN_PRIVATE_KEY 无法被 cosign 1.6.0 解密。" >&2
+        echo "较新版本 cosign 使用 scrypt KDF，与流水线固定的 1.6.0 不兼容。" >&2
+        echo "请用 cosign 1.6.0 重新生成密钥对，再更新 COSIGN_PRIVATE_KEY。" >&2
+        exit 1
+      fi
+
       cosign login -u "${USERNAME}" -p "${PASSWORD}" "${HARBORHOST}"
 
       if [ "${SKIP_DOCKER:-false}" = "true" ]; then
