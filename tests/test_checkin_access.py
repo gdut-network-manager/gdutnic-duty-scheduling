@@ -67,6 +67,18 @@ class CheckinAccessTest(PermissionFixture):
         response = self.login().get('/api/network-access', headers={'X-Forwarded-For':'10.0.0.1', 'X-Real-IP':'10.0.0.1'})
         self.assertEqual(response.json(), {'ip':'192.168.1.20', 'checkin':False, 'field':False})
 
+    def test_configured_proxy_header_supplies_client_ip(self):
+        with patch.dict('os.environ', {'CLIENT_IP_HEADER': 'X-Real-Client-IP'}):
+            response = self.login(host='10.0.0.1').get(
+                '/api/network-access', headers={'X-Real-Client-IP': '203.0.113.7'})
+        self.assertEqual(response.json()['ip'], '203.0.113.7')
+
+    def test_invalid_proxy_header_falls_back_to_peer(self):
+        with patch.dict('os.environ', {'CLIENT_IP_HEADER': 'X-Real-Client-IP'}):
+            response = self.login(host='10.0.0.1').get(
+                '/api/network-access', headers={'X-Real-Client-IP': 'not-an-ip'})
+        self.assertEqual(response.json()['ip'], '10.0.0.1')
+
     def test_administration_requires_dedicated_permission(self):
         admin_store.remember_setup('alice')
         permissions.set_permissions('alice', ['logs'])

@@ -1,0 +1,39 @@
+{{- $fullName := include "duty-scheduling.fullname" . -}}
+{{- $secretName := include "duty-scheduling.secretName" . -}}
+1. 查看部署状态：
+   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ $fullName }}
+
+2. 健康检查：
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ $fullName }} 50025:{{ .Values.service.port }}
+   curl http://127.0.0.1:50025/healthz
+   curl http://127.0.0.1:50025/readyz
+
+3. 访问入口：
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}/
+{{- end }}
+{{- else }}
+   Service 类型为 {{ .Values.service.type }}，请通过你的外层 Nginx 或端口转发访问。
+{{- end }}
+
+4. 首次部署：
+   打开站点后按提示创建原始管理员；凭据保存在 PVC 的 /app/data/root_admin.json。
+{{- if .Values.secrets.create }}
+   本次自动生成的 Secret 为 {{ $secretName }}，升级时 Helm 会保留已有值。
+{{- else }}
+   使用已有 Secret：{{ $secretName }}。
+{{- end }}
+{{- if .Values.mysql.enabled }}
+   集群内 MySQL 已启用，数据位于 {{ include "duty-scheduling.mysqlClaimName" . }}。
+{{- else }}
+   使用外部 MySQL：{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}。
+{{- end }}
+
+5. 真实客户端 IP：
+{{- if .Values.clientIpHeader }}
+   应用从 {{ .Values.clientIpHeader }} 读取客户端地址。请确保最外层 Nginx 使用
+   proxy_set_header {{ .Values.clientIpHeader }} $remote_addr;
+{{- else }}
+   当前未启用代理头，所有请求都会按代理地址计数。生产环境请设置 clientIpHeader。
+{{- end }}
