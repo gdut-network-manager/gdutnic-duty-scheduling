@@ -257,6 +257,32 @@ kubectl -n gdutnic cp duty-scheduling-<pod>:/app/data ./data-backup
 | `COSIGN_PRIVATE_KEY` / `COSIGN_PASSWORD` | cosign 签名；未配置则跳过 | 否 |
 | `FORCE_REBUILD` | `true` 时即使镜像已存在也重建 | 否 |
 
+### cosign 密钥
+
+CI 使用与参考项目相同的 cosign 1.6.0。本机生成密钥对：
+
+```bash
+export COSIGN_PASSWORD='请替换为一个强密码'
+cosign generate-key-pair
+# 生成 cosign.key（私钥，带密码加密）和 cosign.pub（公钥）
+```
+
+`COSIGN_PRIVATE_KEY` 支持三种格式，签名任务会自动识别：
+
+1. **原始 PEM**：`cosign.key` 的完整内容，含 `-----BEGIN ... PRIVATE KEY-----` 行。GitLab 变量值如果无法保留换行，不要用这种。
+2. **base64（推荐）**：适合 GitLab 网页单行输入框。
+   ```bash
+   base64 -w0 cosign.key > cosign.key.b64
+   ```
+   把 `cosign.key.b64` 的内容粘贴到变量值即可。
+3. **File 类型变量**：变量类型选 `File`，签名任务会直接读取 GitLab 写出的临时文件。
+
+`COSIGN_PASSWORD` 填生成密钥时 `COSIGN_PASSWORD` 的值；如果生成时用了空密码，也要把变量定义为空值。`cosign.pub` 不需要放进 CI，可提交到仓库或另行保存，用于验证签名：
+
+```bash
+cosign verify --key cosign.pub <镜像>
+```
+
 Runner tag：
 
 - `dev`：Sonar、Helm、签名
