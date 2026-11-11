@@ -259,7 +259,13 @@ kubectl -n gdutnic cp duty-scheduling-<pod>:/app/data ./data-backup
 
 ### cosign 密钥
 
-CI 使用与参考项目相同的 cosign 1.6.0。本机生成密钥对：
+签名任务基于 `debian:trixie-slim`，通过 apt 安装 Debian 打包的 cosign 2.x：
+
+```bash
+apt-get install -y cosign
+```
+
+因此用本机任意较新版本的 `cosign generate-key-pair` 生成的密钥都可以直接使用，包括 `ENCRYPTED SIGSTORE PRIVATE KEY` 和 scrypt KDF 的新格式：
 
 ```bash
 export COSIGN_PASSWORD='请替换为一个强密码'
@@ -283,16 +289,7 @@ cosign generate-key-pair
 cosign verify --key cosign.pub <镜像>
 ```
 
-用较新版本 cosign 生成的私钥，PEM 类型可能是 `ENCRYPTED SIGSTORE PRIVATE KEY`。只改标签只对旧版 2.x 有效；较新的 cosign 使用 scrypt KDF，与流水线固定的 1.6.0 不兼容，会报 `unexpected kdf parameters`。请直接用 1.6.0 生成：
-
-```bash
-curl -fL -o /tmp/cosign.deb --insecure \
-  https://cn-gz-1.minio.gdutnic.com/gdutnic/public/cosign_1.6.0_amd64.deb
-sudo dpkg -i /tmp/cosign.deb
-export COSIGN_PASSWORD='请替换为一个强密码'
-/usr/local/bin/cosign-linux-amd64 generate-key-pair
-base64 -w0 cosign.key > cosign.key.b64
-```
+签名使用 `--tlog-upload=false`，不依赖公网 Rekor，适合内网 Harbor。
 
 Runner tag：
 
