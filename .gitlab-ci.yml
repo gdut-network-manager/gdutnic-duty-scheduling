@@ -142,7 +142,9 @@ helm-build:
 
 image-sign:
   stage: signing
-  image: registry.gdut.edu.cn/docker/library/debian:trixie-slim
+  # Keep the base image that the runners already have cached. Debian trixie
+  # only provides the cosign package, which is fetched below.
+  image: registry.gdut.edu.cn/docker/library/ubuntu:22.04
   tags:
     - dev
   needs:
@@ -151,18 +153,24 @@ image-sign:
     - job: helm-build
       artifacts: true
   before_script:
-    # Debian trixie packages cosign 2.x, which also understands the scrypt KDF
-    # used by newer cosign key pairs. HTTP bootstraps ca-certificates.
     - |
-      cat > /etc/apt/sources.list.d/debian.sources <<'EOF'
-      Types: deb
-      URIs: http://mirrors.gdut.edu.cn/debian
-      Suites: trixie
-      Components: main
-      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+      # The base image has no CA bundle, so use the HTTP mirror to bootstrap.
+      cat > /etc/apt/sources.list <<'EOF'
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-security main restricted universe multiverse
       EOF
+    - |
+      # Debian trixie packages cosign 2.x, which understands the scrypt KDF used
+      # by newer cosign key pairs. Only the .deb is downloaded so that the
+      # library set of the Ubuntu base image stays untouched.
+      printf '%s\n' \
+        'deb [trusted=yes] http://mirrors.gdut.edu.cn/debian trixie main' \
+        > /etc/apt/sources.list.d/debian-trixie.list
     - apt-get update -y
-    - apt-get install -y --no-install-recommends ca-certificates cosign
+    - apt-get install -y --no-install-recommends ca-certificates
+    - cd /tmp && apt-get download cosign && dpkg -i cosign_*.deb
   script:
     - |
       set -eu
