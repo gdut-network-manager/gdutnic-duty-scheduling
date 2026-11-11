@@ -1,4 +1,3 @@
-### 本项目源自 https://github.com/AndyZhang32767/gdutnic-duty-scheduling 以github版本为准
 
 # GDUTNIC 排班签到
 
