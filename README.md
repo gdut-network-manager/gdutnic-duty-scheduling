@@ -1,3 +1,5 @@
+### 本项目源自 https://github.com/AndyZhang32767/gdutnic-duty-scheduling 以github版本为准
+
 # GDUTNIC 排班签到
 
 网络服务协会的值班排班与签到系统。普通成员用姓名和密码（或 GDUTNIC 单点登录）登录，在概览里查看自己的排班、签到并登记外勤；管理员在管理端维护每日/每周/特殊排班、账号权限、外勤登记与考勤统计，并可限制打卡只能在校内网络完成。界面保留 Material You 风格。
