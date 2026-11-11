@@ -177,7 +177,29 @@ image-sign:
         mv /usr/local/bin/cosign-linux-amd64 /usr/local/bin/cosign
       fi
 
-      printf '%s' "${COSIGN_PRIVATE_KEY}" > cosign.key
+      # Accept the key as raw PEM (multi-line variable), base64 (single-line
+      # variable, which is what the GitLab UI handles best) or a File variable.
+      case "${COSIGN_PRIVATE_KEY}" in
+        -----BEGIN*)
+          printf '%s' "${COSIGN_PRIVATE_KEY}" > cosign.key
+          ;;
+        /*)
+          if [ ! -f "${COSIGN_PRIVATE_KEY}" ]; then
+            echo "COSIGN_PRIVATE_KEY 指向的文件不存在：${COSIGN_PRIVATE_KEY}" >&2
+            exit 1
+          fi
+          cp "${COSIGN_PRIVATE_KEY}" cosign.key
+          ;;
+        *)
+          printf '%s' "${COSIGN_PRIVATE_KEY}" | base64 -d > cosign.key
+          ;;
+      esac
+
+      if ! grep -q 'BEGIN .*PRIVATE KEY' cosign.key; then
+        echo "COSIGN_PRIVATE_KEY 格式无法识别：请使用原始 PEM、base64 或 File 变量。" >&2
+        exit 1
+      fi
+
       chmod 600 cosign.key
       export COSIGN_PASSWORD="${COSIGN_PASSWORD:-}"
       cosign login -u "${USERNAME}" -p "${PASSWORD}" "${HARBORHOST}"
