@@ -259,10 +259,13 @@ kubectl -n gdutnic cp duty-scheduling-<pod>:/app/data ./data-backup
 
 ### cosign 密钥
 
-签名任务基于 `debian:trixie-slim`，通过 apt 安装 Debian 打包的 cosign 2.x：
+签名任务基于 `ubuntu:22.04`，从校园镜像的 Debian trixie 源下载 cosign 2.x 的 deb 包安装（只取 deb，不引入 trixie 的库）：
 
 ```bash
-apt-get install -y cosign
+printf '%s\n' 'deb [trusted=yes] http://mirrors.gdut.edu.cn/debian trixie main' \
+  > /etc/apt/sources.list.d/debian-trixie.list
+apt-get update -y
+cd /tmp && apt-get download cosign && dpkg -i cosign_*.deb
 ```
 
 因此用本机任意较新版本的 `cosign generate-key-pair` 生成的密钥都可以直接使用，包括 `ENCRYPTED SIGSTORE PRIVATE KEY` 和 scrypt KDF 的新格式：
