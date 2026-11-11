@@ -283,6 +283,8 @@ cosign generate-key-pair
 cosign verify --key cosign.pub <镜像>
 ```
 
+用较新版本 cosign 生成的私钥，PEM 类型可能是 `ENCRYPTED SIGSTORE PRIVATE KEY`；它与 1.6.0 认识的 `ENCRYPTED COSIGN PRIVATE KEY` 格式相同，签名任务会自动改标签，不需要重新生成密钥。
+
 Runner tag：
 
 - `dev`：Sonar、Helm、签名

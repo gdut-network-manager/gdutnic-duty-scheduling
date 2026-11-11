@@ -200,6 +200,12 @@ image-sign:
         exit 1
       fi
 
+      # cosign >= 2.x labels the same encrypted key as SIGSTORE, while the
+      # pinned cosign 1.6 only accepts the COSIGN label. The payload and
+      # encryption are identical, so normalize the PEM type instead of
+      # requiring a second key pair.
+      sed -i 's/ENCRYPTED SIGSTORE PRIVATE KEY/ENCRYPTED COSIGN PRIVATE KEY/g' cosign.key
+
       chmod 600 cosign.key
       export COSIGN_PASSWORD="${COSIGN_PASSWORD:-}"
       cosign login -u "${USERNAME}" -p "${PASSWORD}" "${HARBORHOST}"
