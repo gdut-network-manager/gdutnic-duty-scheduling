@@ -142,7 +142,7 @@ helm-build:
 
 image-sign:
   stage: signing
-  image: registry.gdut.edu.cn/docker/library/ubuntu:22.04
+  image: registry.gdut.edu.cn/docker/library/debian:trixie-slim
   tags:
     - dev
   needs:
@@ -151,17 +151,18 @@ image-sign:
     - job: helm-build
       artifacts: true
   before_script:
-    # The base image has no CA bundle, so HTTPS apt sources fail before
-    # ca-certificates can be installed. Use the HTTP mirror to bootstrap.
+    # Debian trixie packages cosign 2.x, which also understands the scrypt KDF
+    # used by newer cosign key pairs. HTTP bootstraps ca-certificates.
     - |
-      cat > /etc/apt/sources.list <<'EOF'
-      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy main restricted universe multiverse
-      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
-      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
-      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-security main restricted universe multiverse
+      cat > /etc/apt/sources.list.d/debian.sources <<'EOF'
+      Types: deb
+      URIs: http://mirrors.gdut.edu.cn/debian
+      Suites: trixie
+      Components: main
+      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
       EOF
     - apt-get update -y
-    - apt-get install -y --no-install-recommends ca-certificates curl
+    - apt-get install -y --no-install-recommends ca-certificates cosign
   script:
     - |
       set -eu
@@ -170,12 +171,7 @@ image-sign:
         exit 0
       fi
 
-      curl -fL -o /tmp/cosign.deb --insecure \
-        "https://cn-gz-1.minio.gdutnic.com/gdutnic/public/cosign_1.6.0_amd64.deb"
-      dpkg -i /tmp/cosign.deb
-      if [ -x /usr/local/bin/cosign-linux-amd64 ]; then
-        mv /usr/local/bin/cosign-linux-amd64 /usr/local/bin/cosign
-      fi
+      cosign version
 
       # Accept the key as raw PEM (multi-line variable), base64 (single-line
       # variable, which is what the GitLab UI handles best) or a File variable.
@@ -200,19 +196,11 @@ image-sign:
         exit 1
       fi
 
-      # cosign >= 2.x labels the key as SIGSTORE while the pinned cosign 1.6
-      # only accepts the COSIGN label. Older 2.x keys share the same KDF, so
-      # normalizing the label rescues those; newer keys use scrypt and are
-      # rejected by the preflight below with a clear message.
-      sed -i 's/ENCRYPTED SIGSTORE PRIVATE KEY/ENCRYPTED COSIGN PRIVATE KEY/g' cosign.key
-
       chmod 600 cosign.key
       export COSIGN_PASSWORD="${COSIGN_PASSWORD:-}"
 
       if ! cosign public-key --key cosign.key >/dev/null 2>&1; then
-        echo "COSIGN_PRIVATE_KEY 无法被 cosign 1.6.0 解密。" >&2
-        echo "较新版本 cosign 使用 scrypt KDF，与流水线固定的 1.6.0 不兼容。" >&2
-        echo "请用 cosign 1.6.0 重新生成密钥对，再更新 COSIGN_PRIVATE_KEY。" >&2
+        echo "COSIGN_PRIVATE_KEY 无法被当前 cosign 解密，请检查 COSIGN_PASSWORD 和密钥格式。" >&2
         exit 1
       fi
 
@@ -221,13 +209,13 @@ image-sign:
       if [ "${SKIP_DOCKER:-false}" = "true" ]; then
         echo "镜像未重新构建，跳过镜像签名。"
       else
-        cosign sign --key cosign.key "${IMAGE}:${IMAGE_TAG}"
+        cosign sign --key cosign.key --tlog-upload=false "${IMAGE}:${IMAGE_TAG}"
       fi
 
       if [ "${SKIP_CHART:-false}" = "true" ]; then
         echo "Chart 未重新构建，跳过 Chart 签名。"
       else
-        cosign sign --key cosign.key \
+        cosign sign --key cosign.key --tlog-upload=false \
           "${HARBORHOST}/${CHART_PROJECT}/${CHART_NAME}:${CHART_VERSION}"
       fi
   after_script:
