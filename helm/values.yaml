@@ -1,0 +1,175 @@
+# Default values for duty-scheduling.
+#
+# The application keeps runtime state under /app/data and caches sessions in the
+# process, so it must run as a single replica with a ReadWriteOnce volume.
+
+replicaCount: 1
+
+image:
+  # Must match the Harbor project used by .gitlab-ci.yml (${HARBORHOST}/...).
+  repository: registry.gdutnic.com/gdutnic-duty-scheduling/duty-scheduling
+  pullPolicy: IfNotPresent
+  # Defaults to .Chart.AppVersion, which CI sets to the commit SHA.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext:
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  # Only used when type is NodePort; leave empty for automatic assignment.
+  nodePort: ""
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: duty.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: duty-example-tls
+  #    hosts:
+  #      - duty.example.com
+
+# Runtime files: session secret, root administrator credentials, logs and backups.
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  storageClassName: ""
+  # Use an already provisioned claim instead of creating one.
+  existingClaim: ""
+
+# Two modes are supported:
+#   create: true  -> the chart creates the Secret and keeps generated values on upgrade
+#   create: false -> point name at a Secret you manage yourself
+secrets:
+  create: true
+  name: ""
+  data:
+    MYSQL_PASSWORD: ""
+    SESSION_SECRET: ""
+    KEYCLOAK_CLIENT_SECRET: ""
+    MYSQL_ROOT_PASSWORD: ""
+
+database:
+  backend: mysql
+  # Ignored when mysql.enabled is true (the chart uses its own Service).
+  host: mysql.example.internal
+  port: 3306
+  name: gdutnic
+  user: gdutnic
+
+mysql:
+  # true  -> run MySQL inside this chart (StatefulSet + PVC)
+  # false -> connect to database.host (managed or pre-existing MySQL)
+  enabled: false
+  image:
+    repository: registry.gdut.edu.cn/docker/library/mysql
+    tag: "8.4"
+    pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClassName: ""
+    existingClaim: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+# Name of the header written by the outermost reverse proxy. Empty means the
+# socket peer is used and no header is trusted.
+clientIpHeader: ""
+# Public URL used for the MCP OAuth callback, for example https://duty.example.com
+publicBaseUrl: ""
+# Set to "1" once the site is served over HTTPS only.
+sessionHttpsOnly: "0"
+
+keycloak:
+  enabled: "false"
+  issuer: ""
+  clientId: ""
+  redirectUri: ""
+  usernameClaim: ""
+
+# Extra non-secret environment variables, for example MYSQL_SSL_CA or SMTP values.
+environment: {}
+
+# Additional Secrets to import as environment variables.
+envFromSecrets: []
+#  - duty-smtp
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 20
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /healthz
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 60
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+extraVolumes: []
+extraVolumeMounts: []
+#  - name: mysql-ca
+#    mountPath: /app/data/certs
+#    readOnly: true

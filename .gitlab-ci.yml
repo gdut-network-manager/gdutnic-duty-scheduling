@@ -1,0 +1,193 @@
+stages:
+  - check
+  - image-build
+  - signing
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+variables:
+  IMAGE_PROJECT: gdutnic-duty-scheduling
+  IMAGE_NAME: duty-scheduling
+  CHART_NAME: duty-scheduling
+  CHART_PROJECT: gdutnic-duty-scheduling/duty-scheduling-helm
+
+# 可选检查：未配置 SonarQube 变量时自动跳过。
+sonarqube-check:
+  stage: check
+  image:
+    name: registry.gdut.edu.cn/docker/sonarsource/sonar-scanner-cli:11
+    entrypoint: [""]
+  tags:
+    - dev
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  script:
+    - |
+      if [ -z "${SONAR_HOST_URL:-}" ] || [ -z "${SONAR_TOKEN:-}" ]; then
+        echo "SONAR_HOST_URL / SONAR_TOKEN 未配置，跳过 SonarQube。"
+        exit 0
+      fi
+      sonar-scanner \
+        -Dsonar.host.url="${SONAR_HOST_URL}" \
+        -Dsonar.token="${SONAR_TOKEN}"
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# 可选检查：未配置 GitHub 镜像变量时自动跳过。
+github-mirror:
+  stage: check
+  image: registry.gdut.edu.cn/docker/alpine/git:latest
+  tags:
+    - dev
+  before_script:
+    - git config --global --add safe.directory "${CI_PROJECT_DIR}"
+  script:
+    - |
+      if [ -z "${GITHUB_REPO:-}" ] || [ -z "${GITHUB_TOKEN:-}" ]; then
+        echo "GITHUB_REPO / GITHUB_TOKEN 未配置，跳过 GitHub 镜像。"
+        exit 0
+      fi
+      git remote add github "https://x-access-token:${GITHUB_TOKEN}@${GITHUB_REPO#https://}"
+      git push github "HEAD:${CI_COMMIT_REF_NAME}" --force
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+docker-build-and-push:
+  stage: image-build
+  image: registry.gdut.edu.cn/docker/library/docker:stable
+  tags:
+    - Docker
+  services:
+    - name: registry.gdut.edu.cn/docker/library/docker:stable
+  variables:
+    DOCKER_CLI_EXPERIMENTAL: "enabled"
+  script:
+    - |
+      set -eu
+      if [ -n "${CI_COMMIT_TAG:-}" ]; then
+        TAG="${CI_COMMIT_TAG}"
+      else
+        TAG="${CI_COMMIT_SHORT_SHA}"
+      fi
+      IMAGE="${HARBORHOST}/${IMAGE_PROJECT}/${IMAGE_NAME}"
+      echo "IMAGE=${IMAGE}" >> build.env
+      echo "IMAGE_TAG=${TAG}" >> build.env
+
+      echo "${PASSWORD}" | docker login -u "${USERNAME}" --password-stdin "${HARBORHOST}"
+
+      if docker manifest inspect "${IMAGE}:${TAG}" >/dev/null 2>&1 \
+          && [ "${FORCE_REBUILD:-false}" != "true" ]; then
+        echo "镜像 ${IMAGE}:${TAG} 已存在，跳过构建。"
+        echo "SKIP_DOCKER=true" >> build.env
+      else
+        docker build --pull -t "${IMAGE}:${TAG}" -f Dockerfile .
+        docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
+        docker push "${IMAGE}:${TAG}"
+        docker push "${IMAGE}:latest"
+        echo "SKIP_DOCKER=false" >> build.env
+      fi
+  after_script:
+    - docker builder prune --all --force || true
+  artifacts:
+    reports:
+      dotenv: build.env
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+helm-build:
+  stage: image-build
+  image: registry.gdut.edu.cn/docker/dtzar/helm-kubectl:3.8.0
+  tags:
+    - dev
+  script:
+    - |
+      set -eu
+      CHART_VERSION="0.1.${CI_PIPELINE_IID}"
+      echo "CHART_VERSION=${CHART_VERSION}" >> build.env
+
+      echo "${PASSWORD}" | helm registry login "${HARBORHOST}" \
+        --username "${USERNAME}" --password-stdin
+
+      if helm pull "oci://${HARBORHOST}/${CHART_PROJECT}" \
+          --version "${CHART_VERSION}" >/dev/null 2>&1; then
+        rm -f "${CHART_NAME}-"*.tgz
+        echo "Chart ${CHART_VERSION} 已存在，跳过构建。"
+        echo "SKIP_CHART=true" >> build.env
+      else
+        helm package helm \
+          --version "${CHART_VERSION}" \
+          --app-version "${CI_COMMIT_SHORT_SHA}"
+        helm push "${CHART_NAME}-${CHART_VERSION}.tgz" \
+          "oci://${HARBORHOST}/${CHART_PROJECT}"
+        echo "SKIP_CHART=false" >> build.env
+      fi
+  artifacts:
+    reports:
+      dotenv: build.env
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+image-sign:
+  stage: signing
+  image: registry.gdut.edu.cn/docker/library/ubuntu:22.04
+  tags:
+    - dev
+  needs:
+    - job: docker-build-and-push
+      artifacts: true
+    - job: helm-build
+      artifacts: true
+  before_script:
+    - sed -i 's|http://archive.ubuntu.com/ubuntu|https://mirrors.gdut.edu.cn/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://mirrors.gdut.edu.cn/ubuntu|g' /etc/apt/sources.list
+    - apt-get update -y
+    - apt-get install -y --no-install-recommends ca-certificates curl
+  script:
+    - |
+      set -eu
+      if [ -z "${COSIGN_PRIVATE_KEY:-}" ]; then
+        echo "COSIGN_PRIVATE_KEY 未配置，跳过签名。"
+        exit 0
+      fi
+
+      curl -fL -o /tmp/cosign.deb --insecure \
+        "https://cn-gz-1.minio.gdutnic.com/gdutnic/public/cosign_1.6.0_amd64.deb"
+      dpkg -i /tmp/cosign.deb
+      if [ -x /usr/local/bin/cosign-linux-amd64 ]; then
+        mv /usr/local/bin/cosign-linux-amd64 /usr/local/bin/cosign
+      fi
+
+      printf '%s' "${COSIGN_PRIVATE_KEY}" > cosign.key
+      chmod 600 cosign.key
+      export COSIGN_PASSWORD="${COSIGN_PASSWORD:-}"
+      cosign login -u "${USERNAME}" -p "${PASSWORD}" "${HARBORHOST}"
+
+      if [ "${SKIP_DOCKER:-false}" = "true" ]; then
+        echo "镜像未重新构建，跳过镜像签名。"
+      else
+        cosign sign --key cosign.key "${IMAGE}:${IMAGE_TAG}"
+      fi
+
+      if [ "${SKIP_CHART:-false}" = "true" ]; then
+        echo "Chart 未重新构建，跳过 Chart 签名。"
+      else
+        cosign sign --key cosign.key \
+          "${HARBORHOST}/${CHART_PROJECT}/${CHART_NAME}:${CHART_VERSION}"
+      fi
+  after_script:
+    - rm -f cosign.key
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

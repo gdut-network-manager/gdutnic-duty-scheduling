@@ -83,7 +83,8 @@ async def lifespan(_app: FastAPI):
             print("[root] 已创建原始管理员；一次性初始密码：" + generated)
             print("[root] 请用它登录后在「其他设置 → 原始管理员密码」中修改。")
     print("")
-    print(f"管理员界面: http://127.0.0.1:50025/{slug}")
+    public_base = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/") or "http://127.0.0.1:50025"
+    print(f"管理员界面: {public_base}/{slug}")
     if not admin_store.has_user():
         print("尚未注册管理员，首次打开站点会跳转到该地址并创建账号。")
     print("")
@@ -248,6 +249,23 @@ async def index():
     )
 
 
+@app.get("/healthz")
+async def healthz():
+    """Liveness: the process can answer HTTP. Deliberately does not touch the DB."""
+    return {"status": "ok"}
+
+
+@app.get("/readyz")
+async def readyz():
+    """Readiness: the application can reach its database."""
+    try:
+        with db.read() as conn:
+            conn.execute("SELECT 1").fetchone()
+    except Exception:
+        return JSONResponse({"status": "unready"}, status_code=503)
+    return {"status": "ready"}
+
+
 def _resolve_mcp_url(request: Request, body: dict[str, Any] | None = None) -> str:
     # Only the administrator-controlled destination is trusted. Old signed
     # sessions may contain URLs originally supplied by anonymous clients.
@@ -324,7 +342,10 @@ async def oauth_start(request: Request, mcp_url: str | None = None):
     if not raw:
         return _oauth_popup_result("missing_url")
     mcp_url = normalize_mcp_url(raw)
-    redirect_uri = str(request.base_url).rstrip("/") + str(request.url_for("oauth_callback").path)
+    # Behind an Ingress or reverse proxy request.base_url may be http:// plus an
+    # internal host. PUBLIC_BASE_URL keeps the registered OAuth callback stable.
+    base = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
+    redirect_uri = base + str(request.url_for("oauth_callback").path)
     try:
         flow = await start_oauth(mcp_url, redirect_uri)
     except Exception as exc:

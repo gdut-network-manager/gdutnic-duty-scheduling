@@ -1,0 +1,154 @@
+{{- if gt (int .Values.replicaCount) 1 }}
+{{- fail "duty-scheduling keeps sessions and a ReadWriteOnce volume in the pod; replicaCount must be 1" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "duty-scheduling.fullname" . }}
+  labels:
+    {{- include "duty-scheduling.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # The application holds sessions, rate-limit counters and background workers in
+  # memory and writes to a ReadWriteOnce volume, so old and new pods must not overlap.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "duty-scheduling.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "duty-scheduling.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "duty-scheduling.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 50025
+              protocol: TCP
+          env:
+            - name: DB_BACKEND
+              value: {{ .Values.database.backend | quote }}
+            {{- if .Values.mysql.enabled }}
+            - name: MYSQL_HOST
+              value: {{ include "duty-scheduling.mysqlFullname" . | quote }}
+            - name: MYSQL_PORT
+              value: "3306"
+            {{- else }}
+            - name: MYSQL_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: MYSQL_PORT
+              value: {{ .Values.database.port | quote }}
+            {{- end }}
+            - name: MYSQL_DATABASE
+              value: {{ .Values.database.name | quote }}
+            - name: MYSQL_USER
+              value: {{ .Values.database.user | quote }}
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "duty-scheduling.secretName" . }}
+                  key: MYSQL_PASSWORD
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "duty-scheduling.secretName" . }}
+                  key: SESSION_SECRET
+            - name: KEYCLOAK_ENABLED
+              value: {{ .Values.keycloak.enabled | quote }}
+            - name: KEYCLOAK_ISSUER
+              value: {{ .Values.keycloak.issuer | quote }}
+            - name: KEYCLOAK_CLIENT_ID
+              value: {{ .Values.keycloak.clientId | quote }}
+            - name: KEYCLOAK_REDIRECT_URI
+              value: {{ .Values.keycloak.redirectUri | quote }}
+            - name: KEYCLOAK_USERNAME_CLAIM
+              value: {{ .Values.keycloak.usernameClaim | quote }}
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "duty-scheduling.secretName" . }}
+                  key: KEYCLOAK_CLIENT_SECRET
+                  optional: true
+            - name: SESSION_HTTPS_ONLY
+              value: {{ .Values.sessionHttpsOnly | quote }}
+            {{- if .Values.clientIpHeader }}
+            - name: CLIENT_IP_HEADER
+              value: {{ .Values.clientIpHeader | quote }}
+            {{- end }}
+            {{- if .Values.publicBaseUrl }}
+            - name: PUBLIC_BASE_URL
+              value: {{ .Values.publicBaseUrl | quote }}
+            {{- end }}
+            {{- range $key, $value := .Values.environment }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- with .Values.envFromSecrets }}
+          envFrom:
+            {{- range . }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            {{- omit .Values.livenessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            {{- omit .Values.readinessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            {{- omit .Values.startupProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "duty-scheduling.dataClaimName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
