@@ -1,0 +1,31 @@
+# Git and CI
+.git
+.gitignore
+.gitlab-ci.yml
+.github
+
+# Local runtime state: never bake data, credentials, logs or the SQLite fallback
+# database into an image.
+data
+*.sqlite
+*.sqlite-*
+.oauth_client.json
+*.log
+*.log.*
+
+# Local environments
+.venv
+venv
+__pycache__
+*.pyc
+.env
+.env.*
+!.env.example
+
+# Development and deployment material not needed at runtime
+tests
+docs
+helm
+icon/*.psd
+*.md
+!requirements.txt

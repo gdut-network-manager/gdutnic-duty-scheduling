@@ -389,6 +389,31 @@ python -m uvicorn server.app:app --host 0.0.0.0 --port 50025 --no-proxy-headers
 - SQL 导出统一放在 `data/backups/`，证书放在 `data/certs/`。`MYSQL_SSL_CA` 的相对路径相对于 `data/`。备份 MySQL 使用逻辑备份（如 `mysqldump`），或停库后备份 `data/mysql/`。
 - `sql/mysql_schema.sql` 只有建表结构，保留在源码中；`.env.example` 只有占位配置。Git 忽略整个 `data/`，并额外忽略数据库文件、SQL 导出、私钥、证书及人员表格，防止误放到其他目录后被提交。
 
+## Kubernetes 部署
+
+仓库提供 `Dockerfile`、`helm/` chart 和 `.gitlab-ci.yml`，支持镜像构建、Helm 打包推 OCI 和 cosign 签名。
+
+```bash
+docker build -t registry.gdutnic.com/gdutnic-duty-scheduling/duty-scheduling:dev .
+
+helm upgrade --install duty-scheduling ./helm \
+  -n gdutnic --create-namespace \
+  --set image.tag=dev \
+  --set clientIpHeader=X-Real-Client-IP \
+  --set publicBaseUrl=https://duty.example.com \
+  --set sessionHttpsOnly=1
+```
+
+注意事项：
+
+- 应用是**单副本有状态服务**，`/app/data` 必须挂 PVC；chart 固定 `Recreate`，不要调大副本数。
+- MySQL 支持「外部库」和「chart 内置」两种模式，用 `mysql.enabled` 切换。
+- Secret 支持 chart 自动生成和引用已有 Secret 两种模式。
+- Ingress、NodePort、集群内外层 Nginx 三种入口都支持；真实 IP 由最外层 Nginx 覆盖写 `X-Real-Client-IP`，应用通过 `clientIpHeader` 启用。
+- 健康检查：`/healthz`（liveness，不查库）、`/readyz`（readiness，执行 `SELECT 1`）。
+
+完整步骤（三种拓扑、两种数据库、两种 Secret、外部 Nginx 配置、备份与回滚）见 [docs/kubernetes.md](docs/kubernetes.md)。
+
 ## 从 SQLite 迁移
 
 先停止旧版应用写入 SQLite，配置好**空的** MySQL 数据库，再执行：

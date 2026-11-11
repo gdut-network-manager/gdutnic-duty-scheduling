@@ -1,0 +1,72 @@
+# duty-scheduling Helm Chart
+
+FastAPI 排班签到服务的 Kubernetes chart。应用本身是**单副本有状态服务**：会话、登录限流、后台 worker 都在进程内，`/app/data` 需要持久卷，因此模板固定使用 `Recreate`，不要把副本数调大。
+
+## 安装
+
+```bash
+helm upgrade --install duty-scheduling ./helm \
+  -n gdutnic --create-namespace \
+  --set image.tag=<commit-sha> \
+  --set clientIpHeader=X-Real-Client-IP \
+  --set publicBaseUrl=https://duty.example.com \
+  --set sessionHttpsOnly=1
+```
+
+从 Harbor OCI 安装：
+
+```bash
+helm upgrade --install duty-scheduling \
+  oci://registry.gdutnic.com/gdutnic-duty-scheduling/duty-scheduling-helm \
+  --version 0.1.<pipeline-id> \
+  -n gdutnic --create-namespace
+```
+
+## 关键 values
+
+| Value | 说明 | 默认 |
+|---|---|---|
+| `image.repository` / `image.tag` | 镜像地址；tag 默认取 `appVersion`（CI 写入短 SHA） | Harbor 路径 / `0.1.0` |
+| `replicaCount` | 必须保持 `1` | `1` |
+| `persistence.*` | `/app/data` 的 PVC（session secret、原始管理员、日志、备份） | `1Gi` RWO |
+| `secrets.create` | `true` 由 chart 生成；`false` 引用已有 Secret | `true` |
+| `secrets.name` | `create=false` 时必填 | 空 |
+| `mysql.enabled` | `true` 在 chart 内起 MySQL；`false` 用外部库 | `false` |
+| `database.host/port/name/user` | 外部库连接信息；内置 MySQL 时只用 name/user | `mysql.example.internal` |
+| `mysql.persistence.*` | 内置 MySQL 的 PVC | `8Gi` |
+| `service.type` | `ClusterIP` / `NodePort` / `LoadBalancer` | `ClusterIP` |
+| `ingress.enabled` | 是否创建 Ingress | `false` |
+| `clientIpHeader` | 最外层代理写入的真实 IP 头；空 = 不信任任何头 | 空 |
+| `publicBaseUrl` | MCP OAuth 回调使用的公开地址 | 空 |
+| `sessionHttpsOnly` | `1` 时 Cookie 只走 HTTPS | `"0"` |
+| `environment` | 额外非敏感环境变量 | `{}` |
+| `envFromSecrets` | 额外导入的 Secret 列表 | `[]` |
+
+## 两种 Secret 模式
+
+```yaml
+# chart 生成（默认）
+secrets:
+  create: true
+  data: {}
+```
+
+`helm upgrade` 会通过 `lookup` 保留已生成的随机值，不会轮换密码。
+
+```yaml
+# 引用已有 Secret
+secrets:
+  create: false
+  name: duty-scheduling-secrets
+```
+
+已有 Secret 至少需要 `MYSQL_PASSWORD`、`SESSION_SECRET`；`KEYCLOAK_CLIENT_SECRET` 可选；`mysql.enabled=true` 时还需要 `MYSQL_ROOT_PASSWORD`。
+
+## 探针
+
+- `/healthz`：进程存活，不查数据库，用于 liveness/startup。
+- `/readyz`：`SELECT 1`，用于 readiness，数据库不可用时只摘流量、不重启 Pod。
+
+## 更多
+
+三种入口拓扑、外部 Nginx 配置、备份和升级步骤见仓库的 [`docs/kubernetes.md`](../docs/kubernetes.md)。

@@ -73,26 +73,28 @@ class AttemptLimiter:
 
 
 def client_key(request) -> str:
-    """Key on the socket peer; never trust X-Forwarded-For without a known proxy."""
-    return request.client.host if request.client else "unknown"
+    """Use the socket peer for check-in unless a trusted proxy header is configured."""
+    return _proxy_client_key(request, os.environ.get("CLIENT_IP_HEADER", "").strip())
 
 
 def login_client_key(request) -> str:
-    """Only an explicitly trusted socket peer may supply the single-hop X-Real-IP.
+    """Resolve the login source through a trusted proxy, defaulting to X-Real-IP."""
+    return _proxy_client_key(request, os.environ.get("CLIENT_IP_HEADER", "").strip() or "X-Real-IP")
 
-    This is deliberately separate from client_key used for check-in network rules.
-    The trusted reverse proxy must overwrite X-Real-IP rather than pass client input.
-    """
-    peer = client_key(request)
+
+def _proxy_client_key(request, header: str) -> str:
+    peer = request.client.host if request.client else "unknown"
+    if not header:
+        return peer
     try:
         address = ipaddress.ip_address(peer)
         networks = [ipaddress.ip_network(value.strip(), strict=False)
-                    for value in os.environ.get('LOGIN_TRUSTED_PROXIES', '').split(',') if value.strip()]
-        if not any(address in network for network in networks):
-            return peer
-        return str(ipaddress.ip_address(request.headers.get('x-real-ip', '')))
+                    for value in os.environ.get("LOGIN_TRUSTED_PROXIES", "").split(",") if value.strip()]
+        if any(address in network for network in networks):
+            return str(ipaddress.ip_address(request.headers.get(header, "").strip()))
     except ValueError:
-        return peer  # Malformed configuration or header fails closed.
+        pass
+    return peer
 
 
 class IdentityCache:
