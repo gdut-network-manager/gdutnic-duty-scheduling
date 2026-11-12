@@ -286,6 +286,40 @@ kubectl -n gdutnic cp duty-scheduling-<pod>:/app/data ./data-backup
 
 外部 MySQL 用你们现有的备份方案；`/app/data` 仍建议定期备份，尤其是 `root_admin.json` 和 `session_secret.txt`。
 
+### 卸载与数据保留
+
+默认 `keepDataOnUninstall: true`，PVC 和 chart 生成的 Secret 都带 `helm.sh/resource-policy: keep`。`helm uninstall` 只删除 Deployment、Service、Ingress 等工作负载，保留：
+
+- `<release>-data` PVC：`/app/data` 下的 `root_admin.json`（原始管理员密码）、`session_secret.txt`、日志和备份
+- chart 生成的 Secret：`MYSQL_PASSWORD`、`SESSION_SECRET`、`KEYCLOAK_CLIENT_SECRET`
+- 内置 MySQL 的 PVC：由 StatefulSet `volumeClaimTemplates` 创建，Kubernetes 本来就不会随 StatefulSet 删除
+
+保留 Secret 很重要：重装时 chart 会用 `lookup` 复用原有值，不会重新生成数据库密码；否则新密码和旧数据目录/数据库对不上。
+
+确实要连数据一起清除时，先卸载再手动删除：
+
+```bash
+helm uninstall duty-scheduling -n gdutnic \
+  && kubectl -n gdutnic delete pvc duty-scheduling-data \
+  && kubectl -n gdutnic delete secret duty-scheduling-secrets \
+  && kubectl -n gdutnic delete pvc data-duty-scheduling-mysql-0   # 内置 MySQL
+```
+
+`data-duty-scheduling-mysql-0` 是 `<volumeClaimTemplate name>-<release>-mysql-0`，只有 `mysql.enabled=true` 时才存在。把 `keepDataOnUninstall` 设为 `false` 也可以恢复成 Helm 默认行为。
+
+重新安装时要用**相同的 release 名和命名空间**，Helm 会接管保留下来的 PVC/Secret 并复用里面的值。如果 Helm 报 `exists and cannot be imported into the current release`（例如资源是手工创建或从别的 release 迁移过来的），补上归属信息再装：
+
+```bash
+kubectl -n gdutnic annotate pvc duty-scheduling-data \
+  meta.helm.sh/release-name=duty-scheduling \
+  meta.helm.sh/release-namespace=gdutnic --overwrite
+kubectl -n gdutnic annotate secret duty-scheduling-secrets \
+  meta.helm.sh/release-name=duty-scheduling \
+  meta.helm.sh/release-namespace=gdutnic --overwrite
+kubectl -n gdutnic label pvc duty-scheduling-data app.kubernetes.io/managed-by=Helm --overwrite
+kubectl -n gdutnic label secret duty-scheduling-secrets app.kubernetes.io/managed-by=Helm --overwrite
+```
+
 ## 10. CI 变量与 Runner
 
 参考项目的约定：

@@ -5,6 +5,12 @@
 
 replicaCount: 1
 
+# Keep the application PVC and the generated Secret when `helm uninstall` runs.
+# /app/data holds root_admin.json and session_secret.txt, and the Secret holds the
+# database password and session secret, so deleting them would lock you out or
+# leave a reinstall unable to reach the existing database.
+keepDataOnUninstall: true
+
 image:
   # Must match the Harbor project used by .gitlab-ci.yml (${HARBORHOST}/...).
   repository: registry.gdutnic.com/gdutnic-duty-scheduling/duty-scheduling

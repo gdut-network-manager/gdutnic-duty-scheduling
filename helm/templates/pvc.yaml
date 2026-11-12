@@ -5,6 +5,12 @@ metadata:
   name: {{ include "duty-scheduling.dataClaimName" . }}
   labels:
     {{- include "duty-scheduling.labels" . | nindent 4 }}
+  {{- if .Values.keepDataOnUninstall }}
+  # /app/data holds root_admin.json, session_secret.txt, logs and backups.
+  # Helm must not delete it when the release is uninstalled.
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode }}

@@ -29,6 +29,7 @@ helm upgrade --install duty-scheduling \
 | `image.repository` / `image.tag` | 镜像地址；tag 默认取 `appVersion`（CI 写入短 SHA） | Harbor 路径 / `0.1.0` |
 | `replicaCount` | 必须保持 `1` | `1` |
 | `persistence.*` | `/app/data` 的 PVC（session secret、原始管理员、日志、备份） | `1Gi` RWO |
+| `keepDataOnUninstall` | `helm uninstall` 时保留 PVC 和生成的 Secret | `true` |
 | `secrets.create` | `true` 由 chart 生成；`false` 引用已有 Secret | `true` |
 | `secrets.name` | `create=false` 时必填 | 空 |
 | `mysql.enabled` | `true` 在 chart 内起 MySQL；`false` 用外部库 | `false` |
