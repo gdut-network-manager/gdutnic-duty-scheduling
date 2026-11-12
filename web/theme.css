@@ -1,0 +1,104 @@
+:root { color-scheme: light; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --schedule-error-container: var(--md-error-container);
+  --schedule-on-error-container: var(--md-on-error-container);
+  --schedule-success-container: var(--md-success-container);
+  --schedule-on-success-container: var(--md-on-success-container);
+  --schedule-warning-container: var(--md-warning-container);
+  --schedule-on-warning-container: var(--md-on-warning-container);
+  --md-primary: #8AD0EE;
+  --md-on-primary: #003545;
+  --md-primary-container: #004D63;
+  --md-on-primary-container: #BCE9FF;
+  --md-secondary: #B4CAD5;
+  --md-on-secondary: #1E333C;
+  --md-secondary-container: #354A53;
+  --md-on-secondary-container: #CFE6F2;
+  --md-tertiary: #C5C3EA;
+  --md-on-tertiary: #2E2D4D;
+  --md-tertiary-container: #444364;
+  --md-on-tertiary-container: #E2DFFF;
+  --md-surface: #0F1417;
+  --md-surface-low: #171C1F;
+  --md-surface-high: #262B2D;
+  --md-on-surface: #DEE3E6;
+  --md-on-surface-variant: #C0C8CC;
+  --md-outline: #8A9296;
+  --md-outline-variant: #40484C;
+  --md-error: #FFB4AB;
+  --md-on-error: #690005;
+  --md-error-container: #690005;
+  --md-on-error-container: #FFDAD6;
+  --md-success-container: #163D20;
+  --md-on-success-container: #B8F0BB;
+  --md-warning-container: #493B00;
+  --md-on-warning-container: #FFE088;
+  --md-ok: #8AD0EE;
+  --md-error-pulse: #B3261E;
+  --md-animated-hover-ink: #BCE9FF;
+  --md-shadow: 0 6.4px 19.2px rgba(0, 0, 0, .24);
+  --schedule-primary-container: #004D63;
+  --schedule-on-primary-container: #BCE9FF;
+  --schedule-primary: #8AD0EE;
+  --schedule-success-outline: #376343;
+  --schedule-warning: #E9C349;
+  --schedule-warning-outline: #706023;
+  --schedule-surface-low: #171C1F;
+  --schedule-error: #FFB4AB;
+  --schedule-disabled-container: #2D3438;
+  --schedule-disabled-ink: #A0AAAF;
+  --schedule-surface-high: #262B2D;
+}
+.ga-brand { gap: 6px; }
+.ga-brand h1 { white-space: nowrap; }
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 4px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--md-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.theme-toggle:hover { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.theme-toggle:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+[data-icon="weather-sunny"] { --component-icon: url("/icon/weather-sunny.svg"); }
+[data-icon="weather-night"] { --component-icon: url("/icon/weather-night.svg"); }
+/* Existing SVG masks inherit each control's semantic foreground color. */
+[data-theme="dark"] img[src="/icon/gdutnic.png"] { filter: brightness(0) invert(1); }
+[data-theme="dark"] .mark,
+[data-theme="dark"] .composer { background: var(--md-surface-high); }
+[data-theme="dark"] .cache-limit-bar { background: var(--md-surface-low); }
+/* All three status families use the same container/on-container tier. */
+[data-theme="dark"] .btn.danger {
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
+}
+[data-theme="dark"] :is(.status.bad, .msg.error) { color: var(--md-on-error-container); }
+[data-theme="dark"] :is(.week-card.warn, .detail-member.late) { color: var(--md-on-warning-container); }
+[data-theme="dark"] :is(.week-card.danger, .detail-member.absent) { color: var(--md-on-error-container); }
+[data-theme="dark"] :is(.week-card.ok, .detail-member.normal) { color: var(--md-on-success-container); }
+[data-theme="dark"] .push-table th { background: var(--md-surface-low); }
+[data-theme="dark"] .push-table :is(th, td),
+[data-theme="dark"] .push-delivery { border-bottom-color: var(--md-outline-variant); }
+[data-theme="dark"] .auth-background { background: var(--md-surface); }
+[data-theme="dark"] .auth-background::before {
+  background: radial-gradient(ellipse at center, rgba(0, 77, 99, .65), rgba(0, 77, 99, 0) 70%);
+}
+[data-theme="dark"] .auth-background::after {
+  background: radial-gradient(ellipse at center, rgba(68, 67, 100, .5), rgba(68, 67, 100, 0) 70%);
+}
+/* SVG presentation attributes otherwise retain the light timeline colors. */
+[data-theme="dark"] .shift-timeline [fill="#235779"] { fill: var(--md-primary); }
+[data-theme="dark"] .shift-timeline [stroke="#235779"] { stroke: var(--md-primary); }
+[data-theme="dark"] .shift-timeline [fill="#7292a1"] { fill: var(--md-on-surface-variant); }
+[data-theme="dark"] .shift-timeline [fill="#932b37"],
+[data-theme="dark"] .shift-timeline [fill="#c62828"] { fill: var(--md-error); }
+[data-theme="dark"] .shift-timeline [fill="#b98100"] { fill: var(--schedule-warning); }

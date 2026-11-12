@@ -151,7 +151,7 @@ html, body {
 }
 .animated-button .oauth-x {
   left: 12.8px;
-  color: #410002;
+  color: var(--md-on-error-container, #410002);
   opacity: 0;
   transition: opacity 800ms cubic-bezier(0.23, 1, 0.32, 1), color 800ms cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -177,7 +177,7 @@ html, body {
   opacity: 0;
   pointer-events: none;
   border-radius: inherit;
-  background-color: #ffdad6;
+  background-color: var(--md-error-container);
   transition:
     opacity 800ms cubic-bezier(0.23, 1, 0.32, 1),
     background-color 800ms cubic-bezier(0.23, 1, 0.32, 1),
@@ -197,7 +197,7 @@ html, body {
 }
 .animated-button:is(:hover, .is-active):not(.is-error) {
   box-shadow: 0 0 0 9.6px transparent;
-  color: #212121;
+  color: var(--md-animated-hover-ink, #212121);
   border-radius: 9.6px;
 }
 .animated-button:is(:hover, .is-active):not(.is-error) .arr-1 {
@@ -221,14 +221,14 @@ html, body {
   opacity: 1;
 }
 .animated-button.is-error {
-  color: #410002;
-  background-color: #ffdad6;
+  color: var(--md-on-error-container, #410002);
+  background-color: var(--md-error-container);
   border-radius: 9.6px;
   box-shadow: 0 0 0 1.6px #ba1a1a;
 }
 .animated-button.is-error .text {
   transform: translateX(9.6px);
-  color: #410002;
+  color: var(--md-on-error-container, #410002);
 }
 .animated-button.is-error .arr-1 {
   right: -25%;
@@ -237,13 +237,13 @@ html, body {
 .animated-button.is-error .arr-2 {
   left: 12.8px;
   opacity: 0;
-  color: #410002;
+  color: var(--md-on-error-container, #410002);
   transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1), color 800ms cubic-bezier(0.23, 1, 0.32, 1), left 800ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .animated-button.is-error .oauth-x {
   left: 12.8px;
   opacity: 1;
-  color: #410002;
+  color: var(--md-on-error-container, #410002);
   transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1) 400ms, color 800ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .animated-button.is-leaving-error .oauth-x {
@@ -264,8 +264,8 @@ html, body {
   box-shadow: 0 0 0 3.2px #f2b8b5;
 }
 @keyframes oauth-error-pulse {
-  from { background-color: #ffdad6; }
-  to { background-color: #f2b8b5; }
+  from { background-color: var(--md-error-container); }
+  to { background-color: var(--md-error-pulse, #f2b8b5); }
 }
 
 .panel {
@@ -2040,8 +2040,8 @@ textarea { resize: vertical; min-height: 44.8px; }
 .sso-toggle input:checked + span { background: var(--md-primary); border-color: var(--md-primary); }
 .sso-toggle input:checked + span::after { transform: translateX(20px); background: var(--md-on-primary, white); }
 .sso-toggle input:focus-visible + span { outline: 3px solid var(--md-primary); outline-offset: 4px; }
-.sso-actions { padding: 0 4px 24px; }
-.sso-actions .actions { justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
+.sso-actions { padding: 0; }
+.sso-actions .actions { justify-content: flex-start; flex-wrap: wrap; gap: 12px; }
 .sso-actions [role=status] { min-height: 24px; line-height: 1.6; }
 @media (max-width: 650px) { .sso-grid { grid-template-columns: minmax(0,1fr); } .sso-config .card { padding: 20px; } .sso-enable-card { gap: 12px; } }
 @media (prefers-reduced-motion: reduce) { .sso-toggle span, .sso-toggle span::after { transition: none; } }

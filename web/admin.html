@@ -6,11 +6,13 @@
   <title>网络服务协会 · 排班管理</title>
   <link rel="icon" href="/icon/gdutnic.png">
   <meta name="theme-color" content="#186078">
+<script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/schedule.css">
   <link rel="stylesheet" href="/static/component-icons.css">
 <link rel="stylesheet" href="/static/auth-background.css">
 <script src="/static/auth-background.js" defer></script>
+<link rel="stylesheet" href="/static/theme.css">
 </head>
 <body data-admin="true">
 <section id="authCard" class="admin-board">
@@ -30,7 +32,7 @@
   <aside class="ga-nav">
     <div class="ga-brand">
       <div class="mark"><img src="/icon/gdutnic.png" alt="网协标志"></div>
-      <div><h1>网络服务协会</h1></div>
+      <div><h1>网络服务协会</h1></div><button type="button" class="theme-toggle" data-theme-toggle data-icon="weather-sunny" aria-label="当前浅色模式，切换为深色" aria-pressed="false" title="当前浅色模式，切换为深色"></button>
     </div>
     <nav>
       <button type="button" id="dailyTab" class="ga-nav-item active">概览</button>
@@ -44,8 +46,9 @@
       <button type="button" id="logsTab" class="ga-nav-item">查看日志</button>
       <button type="button" id="dataTab" class="ga-nav-item">数据管理</button>
       <button type="button" id="settingsTab" class="ga-nav-item">其他设置</button>
+      <button type="button" id="aboutTab" class="ga-nav-item">关于</button>
     </nav>
-    <div class="panel-footer"><button id="logout" class="btn danger" hidden>退出登录</button></div>
+    <div class="panel-footer"><button id="logout" class="btn danger" data-icon="logout" hidden>退出登录</button></div>
   </aside>
   <main class="ga-main">
     <div class="ga-main-body">
@@ -74,15 +77,63 @@
         <p id="anomalyRange" class="hint"></p>
         <div class="anomaly-board">
           <section class="card anomaly-card" id="lateCard">
-            <div class="anomaly-title"><h3 data-icon="clock-alert-outline">迟到排行</h3><span id="lateTotal" class="anomaly-total"></span></div>
+            <div class="anomaly-title"><h3 data-icon="clock-alert-outline">迟到次数统计</h3><span id="lateTotal" class="anomaly-total"></span></div>
             <div id="lateChart" class="anomaly-chart"></div>
           </section>
           <section class="card anomaly-card" id="absentCard">
-            <div class="anomaly-title"><h3 data-icon="account-off-outline">旷班次数</h3><span id="absentTotal" class="anomaly-total"></span></div>
+            <div class="anomaly-title"><h3 data-icon="account-off-outline">旷班次数统计</h3><span id="absentTotal" class="anomaly-total"></span></div>
             <div id="absentChart" class="anomaly-chart"></div>
           </section>
         </div>
         <section id="shifts" class="shifts" hidden></section>
+      </section>
+
+      <section id="aboutPage" hidden>
+        <div class="hero"><div><h1 data-icon="about">关于</h1></div></div>
+        <article class="about-panel">
+          <header class="about-identity">
+            <img src="/icon/gdutnic.png" width="64" height="64" alt="网络服务协会标志">
+            <div><h2>值班排班与签到系统</h2><p>广东工业大学网络与信息协会 · GDUTNIC</p>
+              <p class="about-version">当前版本 <span id="aboutVersion" role="status">正在读取…</span></p>
+            </div>
+          </header>
+          <div class="about-actions">
+            <a class="btn primary" data-icon="github" href="https://github.com/AndyZhang32767/gdutnic-duty-scheduling" target="_blank" rel="noopener noreferrer">GitHub 仓库</a>
+            <a class="btn tonal" data-icon="issue" href="https://github.com/AndyZhang32767/gdutnic-duty-scheduling/issues/new" target="_blank" rel="noopener noreferrer">提交问题</a>
+          </div>
+          <section class="about-support" aria-labelledby="aboutSupportTitle">
+            <h3 id="aboutSupportTitle">反馈与联系</h3>
+            <p>遇到问题或有改进建议？欢迎通过 GitHub Issues 上报，也可以通过邮件联系。</p>
+            <dl>
+              <div><dt>问题上报</dt><dd>请附上当前版本、浏览器版本、复现步骤、预期与实际结果，以及截图或已脱敏的日志。</dd></div>
+              <div><dt>联系邮箱</dt><dd><a data-icon="contact-email" href="mailto:andyzhang32767@gmail.com">andyzhang32767@gmail.com</a></dd></div>
+            </dl>
+          </section>
+          <footer class="about-legal">
+            <p>Copyright © 2026 Andy Zhang and<br>广东工业大学网络与信息协会 (GDUTNIC)</p>
+            <details><summary>MIT License · 查看许可声明</summary><pre class="about-license">MIT License
+
+Copyright (c) 2026 Andy Zhang and 广东工业大学网络与信息协会 (GDUTNIC)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</pre></details>
+          </footer>
+        </article>
       </section>
 
       <section id="weeklyPage" hidden>
@@ -346,7 +397,7 @@
               <div class="sso-grid">
                 <div class="sso-wide"><label class="outlined-field"><input id="ssoIssuer" type="url" placeholder=" " maxlength="2048"><span>身份提供方地址（Issuer）</span></label><p class="hint">填写身份提供方的 Realm 地址，例如 https://你的域名/realms/你的Realm。</p></div>
                 <div><label class="outlined-field"><input id="ssoClientId" type="text" placeholder=" " autocomplete="off" maxlength="2048"><span>客户端标识（Client ID）</span></label></div>
-                <div><label for="ssoClientType">客户端类型</label><select id="ssoClientType"><option value="public">公开客户端 · 无需密钥</option><option value="confidential">机密客户端 · 使用密钥</option></select></div>
+                <div><label class="outlined-field outlined-select"><select id="ssoClientType"><option value="public">公开客户端 · 无需密钥</option><option value="confidential">机密客户端 · 使用密钥</option></select><span>客户端类型</span></label></div>
                 <div id="ssoSecretField" class="sso-wide" hidden><label class="outlined-field"><input id="ssoClientSecret" type="password" placeholder=" " autocomplete="new-password" maxlength="4096"><span>客户端密钥（Client Secret）</span></label><p id="ssoSecretHint" class="hint">填写 Keycloak 为此客户端生成的密钥。</p><label id="ssoClearSecretRow" class="review-check" hidden><input id="ssoClearSecret" type="checkbox"><span>清除已保存的密钥</span></label></div>
               </div>
             </section>
@@ -358,7 +409,7 @@
               <label id="ssoCustomClaimField" class="outlined-field" hidden><input id="ssoCustomClaim" type="text" placeholder=" " maxlength="255"><span>自定义字段名称</span></label>
               <p class="hint">首次接入建议先使用密码绑定，确认实际返回字段后再开启自动匹配。仅使用由组织维护、用户不能任意修改的字段；字段值需与本地用户名一致。</p>
             </section>
-            <div class="sso-actions"><p id="ssoConfigStatus" role="status" aria-live="polite"></p><div class="actions"><button id="ssoTest" type="button" class="btn tonal">测试服务连接</button><button id="ssoSave" type="submit" class="btn primary" data-icon="content-save-outline">保存 SSO 配置</button></div></div>
+            <div class="sso-actions"><p id="ssoConfigStatus" role="status" aria-live="polite"></p><div class="actions"><button id="ssoSave" type="submit" class="btn primary" data-icon="content-save-outline">保存 SSO 配置</button><button id="ssoTest" type="button" class="btn tonal">测试服务连接</button></div></div>
           </fieldset>
         </form>
       </section>
@@ -543,6 +594,7 @@
 <script src="/static/week-board.js"></script>
 <script src="/static/overview.js"></script>
 <script src="/static/weekly.js"></script>
+<script src="/static/about.js"></script>
 <script src="/static/weekly-import.js"></script>
 <script src="/static/special.js"></script>
 <script src="/static/swaps.js"></script>

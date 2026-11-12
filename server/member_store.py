@@ -25,6 +25,10 @@ def cleanup_unused():
     from server.security import MEMBER_SESSIONS
     perms_store.ensure_defaults()
     with db.write() as conn:
+        group = conn.execute('SELECT permissions FROM permission_groups WHERE id=?',
+                             (perms_store.DEFAULT_GROUP,)).fetchone()
+        if group and perms_store.decode(group['permissions']) & perms_store.ADMIN_PERMISSIONS:
+            return {'deleted': 0, 'usernames': []}  # Bulk cleanup never deletes administrators.
         names = roster_names()
         removed = [row['username'] for row in conn.execute(
             'SELECT username FROM member_accounts WHERE group_id=?', (perms_store.DEFAULT_GROUP,))

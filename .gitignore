@@ -41,3 +41,6 @@ output/
 *.xlsx
 *.xls
 *.tsv
+
+# Local container images, Kubernetes manifests and deployment credentials.
+/container/

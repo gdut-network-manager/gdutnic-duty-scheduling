@@ -1,7 +1,7 @@
 
 # GDUTNIC 排班签到
 
-网络服务协会的值班排班与签到系统。普通成员用姓名和密码（或 GDUTNIC 单点登录）登录，在概览里查看自己的排班、签到并登记外勤；管理员在管理端维护每日/每周/特殊排班、账号权限、外勤登记与考勤统计，并可限制打卡只能在校内网络完成。界面保留 Material You 风格。
+网络服务协会的值班排班与签到系统。普通成员用姓名和密码（或 GDUTNIC 单点登录）登录，在概览里查看自己的排班、签到并登记外勤；管理员在管理端维护每日/每周/特殊排班、账号权限、外勤登记与考勤统计，并可限制打卡只能在校内网络完成。界面采用 Material You 风格，支持浅色与深色模式、跟随系统主题。
 
 
 ## 一行部署
@@ -31,9 +31,10 @@ python -m server.init_data && docker compose --env-file data/.env up -d --wait m
 ## 项目结构
 
 ```text
-gdutnic-outline-assistant/
+gdutnic-duty-scheduling/
 ├── server/                 后端（FastAPI）
 │   ├── app.py              应用入口、路由、会话与权限校验
+│   ├── app_version.py      部署版本读取（环境变量、VERSION 文件或 Git）
 │   ├── db.py               MySQL/SQLite 连接、事务与建表升级
 │   ├── schedule_store.py   班次、签到与连班自动签到
 │   ├── weekly_store.py     每周模板、CSV 名单与按日期生成
@@ -60,7 +61,7 @@ gdutnic-outline-assistant/
 │   └── chat.py / qq_bot.py / mcp_client.py / oauth.py  旧版 Wiki 助手（未启用）
 ├── web/                    前端静态页
 │   ├── index.html          成员端：登录、概览（当日排班与外勤登记）、排班列表、外勤确认
-│   ├── admin.html          管理端：概览、排班、调班、用户、外勤、设置
+│   ├── admin.html          管理端：概览、排班、调班、用户、外勤、设置、关于
 │   ├── schedule.js         页面切换、签到表单、班次编辑
 │   ├── overview.js         月度统计、时间轴、周历、详情弹窗
 │   ├── week-board.js       两端共用的正常 / 特殊班次归位
@@ -74,7 +75,7 @@ gdutnic-outline-assistant/
 │   ├── status-editor.js    手工改判考勤/外勤的通用弹窗
 │   ├── field-duty.js       成员端外勤登记
 │   ├── field-confirm.js    成员端外勤确认
-│   ├── shift-timeline.js   值班时间轴（含几何测试）
+│   ├── shift-timeline.js   值班时间轴
 │   ├── checkin-window.js   签到窗口判定
 │   ├── member-network.js   成员端网络状态与按钮置灰
 │   ├── idle-session.js     无操作倒计时与自动退出
@@ -87,12 +88,14 @@ gdutnic-outline-assistant/
 │   ├── range-clear.js      整周排班 / 整月外勤的删除确认
 │   ├── data-admin.js       数据管理：预览、编辑、删除数据库记录
 │   ├── keycloak-bind.html  首次 SSO 绑定页（输入本地账号密码）
-│   ├── auth-background.js  登录页 3D 背景
+│   ├── theme.js / theme.css  两端主题切换、系统主题跟随与深色配色
+│   ├── about.js            管理端关于页与版本读取
+│   ├── auth-background.js  登录页轻量 CSS 渐变背景显隐控制
 │   └── styles.css / schedule.css / auth-background.css  Material You 样式
 ├── sql/mysql_schema.sql    MySQL 建表语句
 ├── tests/                  Python 与 Node 测试
 ├── docs/                   部署与验证记录（Keycloak 配置、安全复核）
-├── icon/                   站点与界面图标（components/ 为组件 SVG，symbol/ 为原有图标）
+├── icon/                   本地图标：站点 Logo、主题、关于、GitHub 及组件 SVG
 ├── data/                   运行时数据（不提交）
 │   ├── .env                数据库凭证与运行配置
 │   ├── root_admin.json     原始管理员的凭据（仅哈希，权限 0600）
@@ -108,6 +111,16 @@ gdutnic-outline-assistant/
 
 ## 项目各部分使用方法
 
+### 浅色与深色主题
+
+管理端和用户端导航栏「网络服务协会」右侧提供仅含图标的太阳／月亮主题按钮，图标表示当前模式。首次访问时跟随系统主题，系统主题变化也会同步；手动切换后优先使用保存在浏览器中的选择，两端及同源标签页共享。浅色模式保留原有配色；深色主题使用 Material 3 蓝青色配色，错误、成功和警告统一采用 Container 背景与 On Container 文字的层级。按钮 SVG 图标跟随前景色，协会 Logo 在深色下显示为浅色。主题图标分别为 `/icon/weather-sunny.svg` 与 `/icon/weather-night.svg`。主题由 `web/theme.js` 和 `web/theme.css` 统一管理，最低兼容目标为 Chromium / Edge 134。
+
+### 登录背景浏览器兼容
+
+登录背景以 Chromium / Edge 134 为最低兼容目标，使用 CSS 径向渐变与 `transform` 动画；JavaScript 只同步登录框和页面可见状态。系统开启「减少动态效果」时显示静态渐变。
+
+已在 macOS ARM64 的 Chrome for Testing 134.0.6998.165、1280×720（DPR 1）可见窗口验证渐变、动画、登录框显隐及减少动态效果。三轮各 5 秒的 `requestAnimationFrame` 采样平均分别为 101.85、119.98、120.00 FPS；第一轮存在 4 个超过 20ms 的间隔。该指标反映浏览器回调节奏，不等于合成器实际呈现帧数，也不替代 Windows Edge 134 实机验收。
+
 ### 启动与首次配置
 
 ```bash
@@ -122,7 +135,7 @@ docker compose --env-file data/.env up -d --wait mysql
 ### 成员端（`/`）
 
 1. 用姓名和密码登录，默认初始密码 `gg2017`；管理员在「其他设置 → SSO 设置」启用并保存后，登录框还会出现「通过GDUTNIC」入口。
-2. 「概览」只显示本人在当天的班次，卡片和时间轴展示同班所有伙伴的名称与考勤状态；在班次开始前「提前打卡」分钟内，“确认签到”按钮变为可点，悬停背景为浅绿色。
+2. 「概览」只显示本人在当天的班次，卡片和时间轴展示同班所有伙伴的名称与考勤状态；在班次开始前「提前打卡」分钟内，“确认签到”按钮变为可点，悬停显示成功状态配色。签到窗口内按钮统一显示“确认签到”，迟到与旷班仍由服务端按实际签到时间判定。
 3. 点击签到后记录到岗时间；若下一班与本班首尾相接（1→2、3→4），会自动一并签到。
 4. 概览时间轴下方的「外勤登记」卡片点击按钮登记本月外勤，成功后按钮固定为「登记完成」。
 5. 「排班列表」可按周浏览所有已生成排班，完整显示值班人员姓名；不显示考勤状态，卡片保持统一颜色。此入口需要单独授予「排班列表」权限，不随「概览」权限自动开放。
@@ -141,7 +154,7 @@ docker compose --env-file data/.env up -d --wait mysql
 - **数据管理**：左侧列出可访问的数据表与行数，右侧分页预览记录（每页 50 行，支持表内搜索）。可直接编辑或删除单行；只有白名单中的列可写，主键只读。密码、密钥类字段显示为 `••••••`，也无法通过此页修改——改密码请走用户管理。操作日志不可改写也不可删除；出勤归档只允许删除；**站点设置**只能查看，只能修改允许的数据项，且不能删除整行；**原始管理员（旧版记录）**是只读的历史记录。**管理员账号**的记录同样受保护：没有「用户管理」权限时，数据管理不能停用或删除管理员账号。表名和列名全部来自服务端白名单，请求不会拼进 SQL 标识符。
   - **考勤人员**额外显示所属班次的日期与起止时间（`班次.day` / `班次.start` / `班次.end`），未签到时也能看出这条记录属于哪一班。
   - **多选与批量删除**：点击行内按钮以外的区域即可选中该行（变蓝），按住 Shift 点击可批量选中连续区间；再次点击已选行会取消。底部「清除该页」删除当前页面（含当前搜索条件）的所有行；选中后其左侧出现「清除选中（n）」，取消全部选中后自动消失。两者都需输入确认语，且都会跳过原始管理员。
-- **异常统计**（在本周排班下方）：可切换「近 2 周 / 近 4 周」，左右两栏用横向柱状图列出迟到与旷班次数排行，柱右侧标注次数；次数相同按姓名拼音排序。历史不足所选周数时，统计窗口内已有的全部记录。
+- **异常统计**（在本周排班下方）：可切换「近 2 周 / 近 4 周」，左右两栏分别为「迟到次数统计」与「旷班次数统计」，用横向柱状图展示对应次数，柱右侧标注次数；次数相同按姓名拼音排序。历史不足所选周数时，统计窗口内已有的全部记录。
 
 ### 每日 / 每周 / 特殊排班 / 调换值班
 
@@ -190,6 +203,24 @@ docker compose --env-file data/.env up -d --wait mysql
   - 「发送测试邮件」会弹窗索取收件地址，用当前配置实际发一封测试信并把成功或失败原因写在卡片内。
   - 实现位于 `server/mailer.py`，仅依赖标准库，每次发送新建连接。`mailer.send(to, subject, body)` 可供其他模块调用。
 
+### 关于与问题反馈
+
+管理端侧栏的「关于」紧跟「其他设置」排列，使用纯文字导航项。页面集中展示项目标志、名称、当前部署版本、GitHub 仓库入口、问题上报方法、联系邮箱和版权声明；完整 MIT 许可可展开查看。
+
+- 仓库：[AndyZhang32767/gdutnic-duty-scheduling](https://github.com/AndyZhang32767/gdutnic-duty-scheduling)。
+- 问题上报：[GitHub Issues](https://github.com/AndyZhang32767/gdutnic-duty-scheduling/issues)。请提供部署版本、浏览器版本、复现步骤、预期与实际结果，以及截图或已脱敏的日志。
+- 联系邮箱：[andyzhang32767@gmail.com](mailto:andyzhang32767@gmail.com)。
+- GitHub 图标从 Primer Octicons 下载后保存在 `/icon/github.svg`，运行时不依赖外链图标；来源与许可见 `icon/README.md` 和 `icon/github-LICENSE.txt`。
+
+版本由 `/api/admin/about` 在管理员登录后提供，按以下顺序读取：
+
+1. 非空的 `APP_VERSION` 环境变量。
+2. 项目根目录非空的 `VERSION` 文件。
+3. `git describe --tags --always --dirty` 的输出；工作区有已跟踪文件的未提交修改时带有 `-dirty` 标记。
+4. 无法读取上述信息时显示「开发版（无版本标记）」。
+
+发布不含 `.git` 的源码包或镜像时，应设置 `APP_VERSION` 或提供 `VERSION` 文件。更新后端代码后需重启应用，才能加载新增或修改的接口。
+
 ### 消息推送
 
 在「消息推送」添加目标邮箱，选择每 1／2／4 周一次及周日发件时间。统计截止北京时间周六 23:59，每次汇总此前连续的完整周日—周六周期。首次启用安排在下一个可用的周日；修改频率或发件时间会重新安排。保存格式、编辑预览均不会发信，默认关闭定时推送；启用前须在「其他设置 → SMTP」完成发件配置。
@@ -212,11 +243,11 @@ docker compose --env-file data/.env up -d --wait mysql
 
 - **权限组管理**：点击「新建权限组」输入名称，展开组卡片后用树状折叠选择可访问的页面，点击「保存访问范围」对全组生效。支持重命名和删除自建组；删除后该组账号自动转入「会员」。
 - **会员**：内置默认组，所有新增账号（含名单补齐、每周排班生成的账号）默认加入。初始开放成员端「概览」下的「打卡、外勤」以及「外勤确认」，「排班列表」需要单独授权；访问范围可编辑，组名固定且不能删除。重复启动不重置已保存的选项。
-- **用户管理 → 更改权限**：只选择用户所属的一个权限组，不再逐个用户勾选权限选项。账号列表显示所属组。
+- **用户管理 → 更改权限**：同时拥有「用户管理」与「权限组管理」权限时，可修改账号所属权限组。仅有「用户管理」权限时可维护普通成员，不能重置、停用、删除或解除管理员的 SSO 绑定；已停用的管理员同样受保护。账号列表显示所属组。
 - **访问选项**与侧栏对应：成员端依次为「概览、排班列表、外勤确认」，其中「概览」下含「打卡、外勤」两个操作权限；管理端依次为「概览、每周排班、特殊排班、调换值班、外勤管理、用户管理、权限组管理、消息推送、查看日志、数据管理、其他设置」。树采用一行一项的紧凑文件列表，按成员端与管理端缩进折叠，父级支持全选与部分选中。
 - **可折叠的子项**：概览下分「查看概览」与「更改考勤状态」；其他设置下分「打卡设置」「SSO 设置」「值班时间」「系统时间」「SMTP」。只勾「更改考勤状态」时概览详情里的人名是只读文本而非按钮，且 `PUT /api/admin/overview/attendance` 只认这一项。
 - **「其他设置」没有独立入口**：只要拥有「值班时间」「系统时间」「SMTP」「打卡设置」「SSO 设置」中的任意一项，侧栏就会出现「其他设置」；进入后只显示已授权的那张卡片。五项分别控制 `/api/admin/rules`、`/api/admin/clock`、`/api/admin/smtp`、`/api/admin/checkin-access`、`/api/admin/sso`，服务端各自校验。
-- 前端隐藏未授权入口，后端逐接口校验组权限；修改组范围会立即影响全组账号的后续请求。管理端的「用户管理」选项覆盖账号、密码与所属组操作；「权限组管理」单独决定能否维护组定义。
+- 前端隐藏未授权入口，后端逐接口校验组权限；修改组范围会立即影响全组账号的后续请求。管理端的「用户管理」控制普通成员账号维护；更改所属组和维护管理员账号还需「权限组管理」，该权限也控制组定义维护。
 - **原始管理员**继续从 `data/root_admin.json` 验证，固定拥有全部访问范围，不能在组或用户管理中降权，且不占用组成员数。
 - 旧账号的独立权限在升级时转换为对应权限组，保留原访问范围；原权限列只用于兼容迁移，用户有效权限以 `member_accounts.group_id` 对应的 `permission_groups` 记录为准。数据库控制台不能直接修改权限列或所属组。
 
@@ -264,6 +295,8 @@ SSO 默认关闭，且身份提供方地址默认为空：本应用不带任何�
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
+| `LOGIN_TRUSTED_PROXIES` | 登录限流可信任的代理 IP / CIDR，逗号分隔；仅这些 socket 来源可通过代理覆写的 `X-Real-IP` 区分客户端，不影响打卡来源 IP 判定 | 空，沿用 `CLIENT_IP_HEADER` 配置 |
+| `APP_VERSION` | 「关于」页显示的部署版本，优先于根目录 `VERSION` 文件与 Git 版本 | 未设置时依次回退 |
 | `DB_BACKEND` | `mysql` 或 `sqlite` | `mysql` |
 | `MYSQL_HOST` | 数据库地址 | `127.0.0.1` |
 | `MYSQL_PORT` | 数据库端口 | `3306`（`.env.example` 中为 Docker 的 `3307`） |
@@ -382,19 +415,21 @@ helm upgrade --install duty-scheduling ./helm \
 
 迁移会先备份 SQLite 到 `data/backups/`，再在单个 MySQL 事务中导入并逐表校验，保留密码哈希、班次 ID 与签到时间。目标库非空时停止，任何失败都会回滚。迁移完成后再启动新版服务。
 
-## 测试
+## 验证与本地测试
+
+学校仓库保留 Python 与 Node 测试。使用临时 SQLite 运行常规测试：
 
 ```bash
-# Python 测试（含真实 MySQL 集成测试）
-RUN_MYSQL_TESTS=1 .venv/bin/python -m unittest discover -s tests -v
-
-# 前端逻辑测试（需 Node 18+）
+python -m unittest discover -s tests
 node --test tests/*.cjs
 ```
 
-MySQL 集成测试使用 `data/.env` 中的本地服务与 root 凭证，每个用例创建独立临时库并在结束时删除，不修改业务库。不设置 `RUN_MYSQL_TESTS=1` 时这些用例自动跳过，其余测试使用临时 SQLite，不影响 `data/`。
+更新后可按以下流程检查：
 
-当前测试覆盖：354 个 Python 用例（含登录会话、心跳、打卡网络规则、SSO 绑定与安全边界）以及 50 项 Node 前端逻辑检查（签到窗口、成员网络置隐、无操作退出、考勤长轮询、权限树等）。
+1. 启动应用，确认成员端与管理员登录页正常显示，密码显隐按钮可用。
+2. 登录后切换浅色与深色模式，刷新页面并在两端之间切换，确认手动选择保留；未手动选择的浏览器应跟随系统主题。
+3. 核对管理员概览中的「迟到次数统计」「旷班次数统计」，以及「其他设置」下方的「关于」页、部署版本、仓库与反馈链接。
+4. 在专用测试环境验证排班、签到、外勤登记与确认；避免使用生产数据执行删除、清空或权限变更检查。
 
 ## 安全
 
@@ -414,46 +449,16 @@ MySQL 集成测试使用 `data/.env` 中的本地服务与 root 凭证，每个�
 
 ## 版本与 Git 使用
 
-- 远端：`origin` → `https://github.com/AndyZhang32767/gdutnic-duty-scheduling.git`
-- 分支：`master` 为已发布的稳定版本；`dev` 为当前开发分支，新功能先进入 `dev`，验证后再合并到 `master`。仓库里另有一个早期快照分支 `v0.1`，仅作留档。截图、日志、`data/` 等运行时产物都不提交。
-- 更新本地代码前先停止正在运行的应用，避免启动脚本升级数据库时与运行中的进程冲突：
-
-```bash
-git switch dev
-git pull --ff-only
-bash start.sh          # Windows 用 start.bat
-```
-
-- 检查当前状态与差异：
-
-```bash
-git status
-git diff                            # 未暂存的改动
-git log --oneline --graph -10       # 最近提交
-git log origin/master..dev --stat   # dev 相对 master 多了哪些改动
-```
-
-- 提交与推送：
-
-```bash
-git add -A
-git commit -m "简短说明改动内容"
-git push                            # dev 已跟踪 origin/dev
-```
-
-- 把 `dev` 的改动发布到 `master`：
-
-```bash
-git switch master
-git pull --ff-only
-git merge --no-ff dev
-git push origin master
-```
+- `origin` 指向学校仓库 `gdut-network-manager/gdutnic-duty-scheduling`，`personal` 指向个人上游 `AndyZhang32767/gdutnic-duty-scheduling`。
+- 从学校的 `origin/master` 创建工作分支，推送该分支后向学校的 `master` 发起 PR。
+- 更新部署前参照 [Kubernetes 部署文档](docs/kubernetes.md)。
 
 - 提交信息沿用现有风格：一行祈使句标题（中文或英文均可），需要时在正文按模块列出关键改动与影响，并注明测试结果。
-- `.gitignore` 已排除 `data/`、`.env`、数据库与 SQL 导出、私钥与证书、人员表格、日志以及 `.playwright-cli/`。若 `git status` 里出现这些路径，说明规则失效，应先修正再提交。
+- `.gitignore` 已排除 `data/`、`.env`、数据库与 SQL 导出、私钥与证书、人员表格、日志、`container/`、`output/` 以及 `.playwright-cli/`。若 `git status` 里出现这些路径，说明规则失效，应先修正再提交。
 - 部署机只需要源代码：拉到新版本后按「一行部署」或「启动」重新执行启动脚本即可，脚本会自动补齐新增表与字段，不会清空已有数据库。
 
 ## 开源协议
 
 本项目采用 [MIT License](LICENSE)。
+
+Copyright © 2026 Andy Zhang and 广东工业大学网络与信息协会 (GDUTNIC)。GitHub 图标的第三方许可另见 [Octicons MIT 许可](icon/github-LICENSE.txt)。

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from server import db
@@ -8,7 +9,12 @@ from server import db
 MAX_SESSIONS = 80
 MAX_MESSAGES = 240
 MAX_CONTENT = 20000
-MAX_IMAGE_URL = 6_000_000
+MAX_IMAGE_URL = 2_000_000
+
+
+class ChatQuotaExceeded(ValueError):
+    pass
+
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
@@ -38,7 +44,7 @@ def _trim_image_url(url: str) -> str:
 def _trim_content(content: Any) -> Any:
     if isinstance(content, list):
         parts: list[dict[str, Any]] = []
-        for part in content:
+        for part in content[:32]:
             if not isinstance(part, dict):
                 continue
             if part.get("type") == "text":
@@ -81,7 +87,7 @@ def _trim_session(raw: dict[str, Any]) -> dict[str, Any] | None:
             "ink": str(theme.get("ink") or ""),
         },
         "messages": messages,
-        "updatedAt": int(raw.get("updatedAt") or 0),
+        "updatedAt": int(time.time() * 1000),
     }
 
 
@@ -184,18 +190,18 @@ def save_visitor_chats(visitor_id: str, sessions: list[Any], current_id: str | N
     if not visitor_id:
         return
     cleaned: list[dict[str, Any]] = []
-    for item in sessions:
+    for item in sessions[:MAX_SESSIONS]:
         if not isinstance(item, dict):
             continue
         row = _trim_session(item)
         if row and row.get("messages"):
             cleaned.append(row)
-    cleaned.sort(key=lambda row: int(row.get("updatedAt") or 0), reverse=True)
+    for index, row in enumerate(cleaned):
+        row["updatedAt"] -= index  # Server ordering; client timestamps never affect eviction.
     cleaned = cleaned[:MAX_SESSIONS]
     with db.write() as conn:
         if not cleaned:
             conn.execute("DELETE FROM visitors WHERE id = ?", (visitor_id,))
-            _evict_oldest(conn, _max_mb(conn))
             return
         db.upsert(conn, "visitors", {"id": visitor_id, "current_id": str(current_id or "")}, ["id"])
         conn.execute("DELETE FROM chats WHERE visitor_id = ?", (visitor_id,))
@@ -227,7 +233,9 @@ def save_visitor_chats(visitor_id: str, sessions: list[Any], current_id: str | N
                     for seq, message in enumerate(session["messages"])
                 ),
             )
-        _evict_oldest(conn, _max_mb(conn))
+        if _usage_bytes(conn) > _max_mb(conn) * 1024 * 1024:
+            # Roll back this write instead of deleting another account's history.
+            raise ChatQuotaExceeded("chat storage quota exceeded")
 
 
 def load_visitor_chats(visitor_id: str) -> dict[str, Any]:

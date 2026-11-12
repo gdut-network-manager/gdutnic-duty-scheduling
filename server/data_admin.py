@@ -338,7 +338,7 @@ def _privileged(keys, actor=''):
     target = str((keys or {}).get('username') or '')
     if not target or target == (actor or ''):
         return False
-    if permissions.has(actor, 'members'):
+    if permissions.has(actor, 'members') and permissions.has(actor, 'permission_groups'):
         return False
     return _account_is_admin(target)
 

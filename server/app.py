@@ -487,7 +487,8 @@ async def chat(request: Request) -> StreamingResponse:
 
 @app.post("/api/chat/title")
 async def chat_title(request: Request) -> dict[str, str]:
-    body = await request.json()
+    _require_mcp_user(request)
+    body = await _bounded_json(request, 256 * 1024)
     openai_base, openai_key, model, provider = admin_store.chat_credentials()
     if not openai_base or not openai_key or not model:
         raise HTTPException(status_code=400, detail="尚未配置模型接口")
@@ -654,6 +655,13 @@ def _reject_root(name: str) -> None:
         raise HTTPException(status_code=403, detail="原始管理员不可在此修改，只能修改其密码")
 
 
+def _require_default_account_grant(actor: str) -> None:
+    # A customized default group must not provide a back door around group assignment.
+    default = next(group for group in permissions.list_groups() if group['default'])
+    if set(default['permissions']) & permissions.ADMIN_PERMISSIONS and not permissions.has(actor, 'permission_groups'):
+        raise HTTPException(403, "默认权限组包含管理权限，创建账号需要权限组管理权限")
+
+
 def _may_manage(target: str, actor: str) -> bool:
     """Without the grant permission, an account cannot touch a privileged account.
 
@@ -662,9 +670,9 @@ def _may_manage(target: str, actor: str) -> bool:
     """
     if target == actor:
         return True
-    if permissions.has(actor, "members"):
+    if permissions.has(actor, "permission_groups"):
         return True
-    return not permissions.is_admin(target)
+    return not permissions.is_admin(target, include_inactive=True)
 
 
 def _admin_username(request: Request) -> str:
@@ -694,7 +702,7 @@ async def admin_status(request: Request) -> dict[str, Any]:
         "username": name or _admin_username(request) if name else "",
         "permissions": sorted(permissions.permissions_of(name)) if name else [],
         "now": system_clock.public(),
-        "can_grant": bool(name and permissions.has(name, "accounts_protected")),
+        "can_grant": bool(name and permissions.has(name, "permission_groups")),
     }
 
 
@@ -732,7 +740,7 @@ async def admin_register(request: Request) -> dict[str, Any]:
 async def admin_login(request: Request) -> JSONResponse:
     if not _admin_gate(request):
         raise HTTPException(status_code=403, detail="请从控制台提示的管理员网址进入")
-    key = "admin:" + security.client_key(request)
+    key = "admin:" + security.login_client_key(request)
     if ADMIN_LIMITER.blocked(key):
         raise HTTPException(status_code=429, detail="管理员登录尝试过于频繁，请在限制开始 10 分钟后重试")
     body = await request.json()
@@ -943,20 +951,59 @@ async def admin_qq_save(request: Request) -> dict[str, Any]:
     return await _qq_bot().sync()
 
 
+async def _bounded_json(request: Request, limit: int):
+    # Count streamed bytes as well as Content-Length; chunked bodies cannot bypass the cap.
+    try:
+        declared = int(request.headers.get("content-length", "0"))
+    except ValueError as exc:
+        raise HTTPException(400, "Content-Length 格式错误") from exc
+    if declared < 0:
+        raise HTTPException(400, "Content-Length 格式错误")
+    if declared > limit:
+        raise HTTPException(413, "请求内容过大")
+    chunks = bytearray()
+    async for chunk in request.stream():
+        if len(chunks) + len(chunk) > limit:
+            raise HTTPException(413, "请求内容过大")
+        chunks.extend(chunk)
+    try:
+        body = json.loads(chunks)
+    except (ValueError, UnicodeError) as exc:
+        raise HTTPException(400, "JSON 格式错误") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(400, "请求格式错误")
+    return body
+
+
+def _chat_owner(request: Request) -> str:
+    # Never use the caller-controlled legacy visitor cookie to authorize storage.
+    name = _session_account(request) or _require_member(request)
+    with db.read() as conn:
+        identity = keycloak.account_key(conn, name)
+    if not identity:
+        with db.write() as conn:
+            identity = keycloak.account_key(conn, name, create=True)
+    if not identity:
+        raise HTTPException(401, "账号已失效，请重新登录")
+    return "account:" + identity
+
+
 @app.get("/api/chats")
 async def chats_get(request: Request) -> JSONResponse:
-    visitor = _visitor_id(request)
-    packed = chat_store.load_visitor_chats(visitor)
-    return _with_visitor_cookie(request, packed, visitor)
+    owner = _chat_owner(request)
+    return JSONResponse(chat_store.load_visitor_chats(owner), headers={"Cache-Control": "no-store"})
 
 
 @app.put("/api/chats")
 async def chats_put(request: Request) -> JSONResponse:
-    visitor = _visitor_id(request)
-    body = await request.json()
+    owner = _chat_owner(request)
+    body = await _bounded_json(request, 8 * 1024 * 1024)
     sessions = body.get("sessions") if isinstance(body.get("sessions"), list) else []
-    chat_store.save_visitor_chats(visitor, sessions, str(body.get("currentId") or ""))
-    return _with_visitor_cookie(request, {"ok": True}, visitor)
+    try:
+        chat_store.save_visitor_chats(owner, sessions, str(body.get("currentId") or ""))
+    except chat_store.ChatQuotaExceeded as exc:
+        raise HTTPException(413, "会话存储空间不足，请删除自己的旧会话或联系管理员") from exc
+    return JSONResponse({"ok": True})
 
 
 @app.get("/api/admin/chats")
@@ -1359,7 +1406,7 @@ async def member_status(request: Request):
 
 @app.post("/api/member/login")
 async def member_login(request: Request):
-    key = "member:" + security.client_key(request)
+    key = "member:" + security.login_client_key(request)
     if MEMBER_LIMITER.blocked(key):
         raise HTTPException(status_code=429, detail="登录尝试过于频繁，请 5 分钟后重试")
     body = await request.json()
@@ -1644,7 +1691,7 @@ async def admin_members(request: Request):
         "items": member_store.list_accounts(),
         "groups": permissions.list_groups(),
         "me": actor,
-        "can_grant": True,
+        "can_grant": permissions.has(actor, "permission_groups"),
     }
 
 
@@ -1655,6 +1702,8 @@ async def admin_member_sso_unlink(request: Request, username: str = ""):
     if not name:
         raise HTTPException(400, "请指定账号")
     _reject_root(name)
+    if not _may_manage(name, actor):
+        raise HTTPException(403, "操作管理员账号需要权限组管理权限")
     try:
         result = keycloak.unlink_account(name)
     except (ValueError, LookupError) as exc:
@@ -1666,6 +1715,7 @@ async def admin_member_sso_unlink(request: Request, username: str = ""):
 @app.put("/api/admin/members/permissions")
 async def admin_member_permissions(request: Request):
     _require_permission(request, "members")
+    _require_permission(request, "permission_groups")
     body = await request.json()
     name = str(body.get("username") or "").strip()
     if not name:
@@ -1694,8 +1744,8 @@ async def admin_member_password(request: Request):
             raise HTTPException(status_code=403, detail="原始管理员的密码只能由本人修改")
         raise HTTPException(status_code=400, detail="原始管理员请使用专用入口修改密码")
     # Only the account itself or a holder of "更改权限" may set a password.
-    if name != actor and not permissions.has(actor, "members"):
-        raise HTTPException(status_code=403, detail="仅账号本人或拥有“更改权限”者可以更改密码")
+    if not _may_manage(name, actor):
+        raise HTTPException(status_code=403, detail="操作管理员账号需要权限组管理权限")
     try:
         member_store.set_password(name, str(body.get("password") or ""))
         _log(_admin_username(request), '更改账号密码', name)
@@ -1711,6 +1761,7 @@ async def admin_provision_members(request: Request):
         raise HTTPException(status_code=401, detail="请先登录管理员")
     if not any(permissions.has(actor, p) for p in ('members', 'weekly')):
         raise HTTPException(status_code=403, detail="当前账号没有此权限")
+    _require_default_account_grant(actor)
     result = member_store.provision()
     _log(_admin_username(request), '补齐排班人员账号',
          f"新建 {result['created']} 个，已存在 {result['existing']} 个")
@@ -1727,7 +1778,8 @@ async def admin_cleanup_members(request: Request):
 
 @app.post("/api/admin/members")
 async def admin_add_member(request: Request):
-    _require_permission(request, "members")
+    actor = _require_permission(request, "members")
+    _require_default_account_grant(actor)
     body = await request.json()
     try:
         result = member_store.create(body.get("username"))
@@ -1886,6 +1938,14 @@ async def keycloak_binding_page():
 
 from server import keycloak
 app.include_router(keycloak.router)
+
+
+@app.get("/api/admin/about")
+async def admin_about(request: Request):
+    if not _session_account(request):
+        raise HTTPException(status_code=401, detail="请先登录管理员")
+    from server.app_version import current_version
+    return {"version": current_version(ROOT)}
 
 
 @app.get("/{slug}")

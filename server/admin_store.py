@@ -512,7 +512,7 @@ def smtp_public() -> dict[str, Any]:
         "port": int(smtp.get("port") or 0),
         "security": str(smtp.get("security") or "ssl"),
         "username": str(smtp.get("username") or "").strip(),
-        "password": password,
+        "password": MASKED if password else "",
         "has_password": bool(password),
         "from_address": str(smtp.get("from_address") or "").strip(),
         "from_name": str(smtp.get("from_name") or "").strip(),

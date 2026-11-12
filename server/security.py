@@ -1,6 +1,7 @@
 """Login throttling and response hardening shared by the login endpoints."""
 from __future__ import annotations
 
+import ipaddress
 import os
 import threading
 import time
@@ -91,8 +92,29 @@ def client_ip(request) -> str:
 
 
 def client_key(request) -> str:
-    """Login throttling key: the resolved client address."""
+    """Resolve the client address using the school deployment configuration."""
     return client_ip(request)
+
+
+def login_client_key(request) -> str:
+    """Only an explicitly trusted socket peer may supply the single-hop X-Real-IP.
+
+    This is deliberately separate from client_key used for check-in network rules.
+    The trusted reverse proxy must overwrite X-Real-IP rather than pass client input.
+    """
+    trusted_proxies = os.environ.get('LOGIN_TRUSTED_PROXIES', '').strip()
+    if not trusted_proxies:
+        return client_key(request)
+    peer = request.client.host if request.client else "unknown"
+    try:
+        address = ipaddress.ip_address(peer)
+        networks = [ipaddress.ip_network(value.strip(), strict=False)
+                    for value in trusted_proxies.split(',') if value.strip()]
+        if not any(address in network for network in networks):
+            return peer
+        return str(ipaddress.ip_address(request.headers.get('x-real-ip', '')))
+    except ValueError:
+        return peer  # Malformed configuration or header fails closed.
 
 
 class IdentityCache:

@@ -326,7 +326,7 @@ async def verify(request: Request):
         flow = pending(request, conn)
     csrf(request, body, flow)
     name, password = str(body.get('username') or '').strip(), str(body.get('password') or '')
-    key, account = 'admin:' + api.security.client_key(request), 'admin:' + name.casefold()
+    key, account = 'admin:' + api.security.login_client_key(request), 'admin:' + name.casefold()
     # A binding proof that can authorize admin login uses the existing admin throttle.
     privileged = flow['target'] == 'admin' or permissions.is_admin(name)
     if privileged and (api.ADMIN_LIMITER.blocked(key) or api.ACCOUNT_LIMITER.blocked(account)):
