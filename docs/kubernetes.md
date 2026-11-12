@@ -348,10 +348,10 @@ helm upgrade --install duty-scheduling \
   -n gdutnic \
   --values custom.yaml \
   --set image.tag=<短SHA> \
-  --atomic --timeout 10m --debug
+  --atomic --timeout 10m
 ```
 
-`--debug` 会在 job 日志里打印 USER-SUPPLIED VALUES 和渲染后的 MANIFEST，排查失败很方便，但也会暴露其中的敏感内容：`secrets.create=true` 时 Secret 的 base64 data 会直接出现在日志里，`VALUES_BASE64` 里的明文密码同样会被打印。因此生产部署应使用 `secrets.create=false` 引用已有 Secret，并不在 values 里写明文密码。
+排查失败时可以在 GitLab 里把 `HELM_DEBUG` 设为 `"true"` 重跑 job，`helm` 会额外打印 USER-SUPPLIED VALUES 和渲染后的 MANIFEST。这个开关默认关闭，因为日志会暴露敏感内容：`VALUES_BASE64` 里的明文密码、`secrets.create=true` 时 Secret 的 base64 data 都会永久留在 job 日志里。用完记得改回 `"false"`，敏感值改用 `secrets.create=false` 引用已有 Secret。
 
 准备 `KUBECONFIG_DATA`：
 
