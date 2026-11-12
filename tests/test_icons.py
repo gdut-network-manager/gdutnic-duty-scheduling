@@ -33,7 +33,8 @@ class TestComponentIcons(unittest.TestCase):
                 self.assertTrue((COMPONENTS / filename).is_file(), f'缺少图标：{filename}')
 
     def test_every_used_component_icon_has_a_css_mapping(self):
-        declared = set(re.findall(r'\[data-icon="([^"]+)"\]', CSS.read_text(encoding='utf-8')))
+        declared = {icon for path in web_sources() if path.suffix == '.css'
+                    for icon in re.findall(r'\[data-icon="([^"]+)"\]', path.read_text(encoding='utf-8'))}
         used = set()
         for path in web_sources():
             if path.suffix == '.css':

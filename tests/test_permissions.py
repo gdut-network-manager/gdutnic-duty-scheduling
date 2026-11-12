@@ -87,7 +87,7 @@ class TestPermissions(PermissionFixture):
         self.assertEqual(client.patch('/api/admin/members', json={'username': 'ordinary', 'active': False}).status_code, 200)
         self.assertEqual(client.patch('/api/admin/members', json={'username': root_admin.USERNAME, 'reset_password': True}).status_code, 403)
         self.assertEqual(client.delete('/api/admin/members', params={'username': root_admin.USERNAME}).status_code, 403)
-        self.assertEqual(client.put('/api/admin/members/permissions', json={'username': 'ordinary', 'permissions': ['field']}).status_code, 400)
+        self.assertEqual(client.put('/api/admin/members/permissions', json={'username': 'ordinary', 'permissions': ['field']}).status_code, 403)
         self.assertEqual(client.get('/api/admin/permission-groups').status_code, 403)
 
     def test_grant_holder_can_change_permissions_and_passwords(self):

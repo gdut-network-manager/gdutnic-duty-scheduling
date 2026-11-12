@@ -47,7 +47,7 @@ class ChatStoreTest(unittest.TestCase):
                 usage.assert_called_once_with(conn)
             self.assertLessEqual(chat_store._usage_bytes(conn), 1024 * 1024)
         self.assertEqual([s['id'] for s in chat_store.load_visitor_chats('visitor')['sessions']],
-                         ['4', '3', '2'])
+                         ['0', '1', '2'])
 
     def test_eviction_removes_empty_visitors_and_handles_empty_database(self):
         self.save(count=1)

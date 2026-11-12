@@ -121,7 +121,10 @@ class SecurityBoundariesTest(PermissionFixture):
     def test_limited_admin_cannot_access_other_admin_operations(self):
         permissions.set_permissions('alice', ['logs'])
         client = self.login(admin=True)
-        exempt = {'/api/admin/status', '/api/admin/login', '/api/admin/register', '/api/admin/logout', '/api/admin/logs'}
+        about = client.get('/api/admin/about')
+        self.assertEqual(about.status_code, 200)
+        self.assertEqual(set(about.json()), {'version'})
+        exempt = {'/api/admin/status', '/api/admin/login', '/api/admin/register', '/api/admin/logout', '/api/admin/logs', '/api/admin/about'}
         for route in api.app.routes:
             if not isinstance(route, APIRoute) or not route.path.startswith('/api/admin/') or route.path in exempt:
                 continue
