@@ -110,20 +110,35 @@ mysql:
 clientIpHeader: ""
 # Public URL used for the MCP OAuth callback, for example https://duty.example.com
 publicBaseUrl: ""
-# Set to "1" once the site is served over HTTPS only.
-sessionHttpsOnly: "0"
+# Set to "1" once the site is served over HTTPS only. Empty means unset, so the
+# application default (plain HTTP allowed) applies and envFromSecrets can supply it.
+sessionHttpsOnly: ""
 
 keycloak:
-  enabled: "false"
+  enabled: ""
   issuer: ""
   clientId: ""
   redirectUri: ""
   usernameClaim: ""
 
 # Extra non-secret environment variables, for example MYSQL_SSL_CA or SMTP values.
+# These override the values rendered from the fields above.
 environment: {}
 
-# Additional Secrets to import as environment variables.
+# Raw Kubernetes env entries rendered last, so they win over the fields above and
+# `environment`. They may use valueFrom/secretKeyRef. Unlike envFromSecrets, a
+# duplicate name here replaces the chart-generated entry instead of being ignored.
+extraEnv: []
+#  - name: MYSQL_PASSWORD
+#    valueFrom:
+#      secretKeyRef:
+#        name: my-mysql
+#        key: password
+
+# Additional Secrets to import as environment variables. Kubernetes gives `env`
+# precedence over `envFrom`, so entries already rendered above (DB_*, SESSION_*,
+# KEYCLOAK_*) must be set through the fields above / `environment` / `extraEnv`
+# instead. Variables the chart does not define (SMTP_*, etc.) work normally.
 envFromSecrets: []
 #  - duty-smtp
 

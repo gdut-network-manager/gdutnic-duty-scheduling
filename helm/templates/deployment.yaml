@@ -44,64 +44,60 @@ spec:
             - name: http
               containerPort: 50025
               protocol: TCP
+          {{/*
+          Env precedence inside the chart (later wins):
+            1. values-derived entries below
+            2. .Values.environment
+            3. .Values.extraEnv (supports valueFrom)
+          Kubernetes gives `env` precedence over `envFrom`, so a variable listed
+          here shadows the same key from .Values.envFromSecrets. Empty values are
+          omitted instead of being rendered as "", otherwise they would silently
+          mask a value supplied through envFromSecrets.
+          */}}
+          {{- $env := dict -}}
+          {{- $_ := set $env "DB_BACKEND" (dict "value" (toString .Values.database.backend)) -}}
+          {{- if .Values.mysql.enabled -}}
+          {{- $_ := set $env "MYSQL_HOST" (dict "value" (include "duty-scheduling.mysqlFullname" .)) -}}
+          {{- $_ := set $env "MYSQL_PORT" (dict "value" "3306") -}}
+          {{- else -}}
+          {{- $_ := set $env "MYSQL_HOST" (dict "value" (toString .Values.database.host)) -}}
+          {{- $_ := set $env "MYSQL_PORT" (dict "value" (toString .Values.database.port)) -}}
+          {{- end -}}
+          {{- $_ := set $env "MYSQL_DATABASE" (dict "value" (toString .Values.database.name)) -}}
+          {{- $_ := set $env "MYSQL_USER" (dict "value" (toString .Values.database.user)) -}}
+          {{- $_ := set $env "MYSQL_PASSWORD" (dict "valueFrom" (dict "secretKeyRef" (dict "name" (include "duty-scheduling.secretName" .) "key" "MYSQL_PASSWORD"))) -}}
+          {{- $_ := set $env "SESSION_SECRET" (dict "valueFrom" (dict "secretKeyRef" (dict "name" (include "duty-scheduling.secretName" .) "key" "SESSION_SECRET"))) -}}
+          {{- $_ := set $env "KEYCLOAK_CLIENT_SECRET" (dict "valueFrom" (dict "secretKeyRef" (dict "name" (include "duty-scheduling.secretName" .) "key" "KEYCLOAK_CLIENT_SECRET" "optional" true))) -}}
+          {{- $_ := set $env "KEYCLOAK_ENABLED" (dict "value" (toString .Values.keycloak.enabled)) -}}
+          {{- $_ := set $env "KEYCLOAK_ISSUER" (dict "value" (toString .Values.keycloak.issuer)) -}}
+          {{- $_ := set $env "KEYCLOAK_CLIENT_ID" (dict "value" (toString .Values.keycloak.clientId)) -}}
+          {{- $_ := set $env "KEYCLOAK_REDIRECT_URI" (dict "value" (toString .Values.keycloak.redirectUri)) -}}
+          {{- $_ := set $env "KEYCLOAK_USERNAME_CLAIM" (dict "value" (toString .Values.keycloak.usernameClaim)) -}}
+          {{- $_ := set $env "SESSION_HTTPS_ONLY" (dict "value" (toString .Values.sessionHttpsOnly)) -}}
+          {{- if .Values.clientIpHeader -}}
+          {{- $_ := set $env "CLIENT_IP_HEADER" (dict "value" (toString .Values.clientIpHeader)) -}}
+          {{- end -}}
+          {{- if .Values.publicBaseUrl -}}
+          {{- $_ := set $env "PUBLIC_BASE_URL" (dict "value" (toString .Values.publicBaseUrl)) -}}
+          {{- end -}}
+          {{- range $key, $value := .Values.environment -}}
+          {{- $_ := set $env $key (dict "value" (toString $value)) -}}
+          {{- end -}}
+          {{- range .Values.extraEnv -}}
+          {{- $_ := set $env .name (omit . "name") -}}
+          {{- end -}}
+          {{- range $key, $entry := $env -}}
+          {{- if and (hasKey $entry "value") (eq (toString (get $entry "value")) "") -}}
+          {{- $_ := unset $env $key -}}
+          {{- end -}}
+          {{- end -}}
           env:
-            - name: DB_BACKEND
-              value: {{ .Values.database.backend | quote }}
-            {{- if .Values.mysql.enabled }}
-            - name: MYSQL_HOST
-              value: {{ include "duty-scheduling.mysqlFullname" . | quote }}
-            - name: MYSQL_PORT
-              value: "3306"
-            {{- else }}
-            - name: MYSQL_HOST
-              value: {{ .Values.database.host | quote }}
-            - name: MYSQL_PORT
-              value: {{ .Values.database.port | quote }}
-            {{- end }}
-            - name: MYSQL_DATABASE
-              value: {{ .Values.database.name | quote }}
-            - name: MYSQL_USER
-              value: {{ .Values.database.user | quote }}
-            - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "duty-scheduling.secretName" . }}
-                  key: MYSQL_PASSWORD
-            - name: SESSION_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "duty-scheduling.secretName" . }}
-                  key: SESSION_SECRET
-            - name: KEYCLOAK_ENABLED
-              value: {{ .Values.keycloak.enabled | quote }}
-            - name: KEYCLOAK_ISSUER
-              value: {{ .Values.keycloak.issuer | quote }}
-            - name: KEYCLOAK_CLIENT_ID
-              value: {{ .Values.keycloak.clientId | quote }}
-            - name: KEYCLOAK_REDIRECT_URI
-              value: {{ .Values.keycloak.redirectUri | quote }}
-            - name: KEYCLOAK_USERNAME_CLAIM
-              value: {{ .Values.keycloak.usernameClaim | quote }}
-            - name: KEYCLOAK_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "duty-scheduling.secretName" . }}
-                  key: KEYCLOAK_CLIENT_SECRET
-                  optional: true
-            - name: SESSION_HTTPS_ONLY
-              value: {{ .Values.sessionHttpsOnly | quote }}
-            {{- if .Values.clientIpHeader }}
-            - name: CLIENT_IP_HEADER
-              value: {{ .Values.clientIpHeader | quote }}
-            {{- end }}
-            {{- if .Values.publicBaseUrl }}
-            - name: PUBLIC_BASE_URL
-              value: {{ .Values.publicBaseUrl | quote }}
-            {{- end }}
-            {{- range $key, $value := .Values.environment }}
+          {{- range $key := keys $env | sortAlpha }}
             - name: {{ $key }}
-              value: {{ $value | quote }}
+            {{- with get $env $key }}
+            {{- toYaml . | nindent 14 }}
             {{- end }}
+          {{- end }}
           {{- with .Values.envFromSecrets }}
           envFrom:
             {{- range . }}
