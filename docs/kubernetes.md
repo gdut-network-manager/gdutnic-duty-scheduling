@@ -191,6 +191,22 @@ helm upgrade --install duty-scheduling ./helm \
 
 upstream 用 `http://duty-scheduling.gdutnic.svc.cluster.local:80`。
 
+### 5.4 完整示例：外层 Nginx → ingress-nginx
+
+`attendance.gdutnic.com` 的完整配置见 [`nginx-attendance.gdutnic.com.conf`](nginx-attendance.gdutnic.com.conf)，包含：
+
+- 80 跳 443、TLS 与 HSTS
+- upstream 指向 ingress-nginx，默认走 HTTP，避免内外两层重复终止 TLS
+- `proxy_set_header Host $host` 让 Ingress 规则匹配
+- 用 `X-Real-Client-IP $remote_addr` 覆盖写真实 IP，配合 `clientIpHeader`
+
+要点：
+
+- TLS 在最外层终止时，Ingress **不要**配 `tls`，也不要开 `ssl-redirect`，否则 ingress-nginx 会把内部 HTTP 请求再次 308 到 HTTPS，形成回环。
+- ingress-nginx 默认 `proxy-body-size` 只有 1m，导入名单/备份会 413，需要在 Ingress 注解里放开（示例文件头部已列出）。
+- 外层 Nginx 到 ingress 如果走 HTTPS，需要 `proxy_ssl_server_name on` 并设置 SNI；证书由内部 CA 签发时再配 `proxy_ssl_trusted_certificate`。
+- ingress-nginx 想在自己的日志里看到真实 IP，需要在 controller ConfigMap 里设 `use-forwarded-headers: "true"` 和 `compute-full-forwarded-for: "true"`；应用本身只读 `X-Real-Client-IP`，不依赖这两项。
+
 ## 6. 真实客户端 IP（IP 签到/限流）
 
 应用只读取 `clientIpHeader` 指定的头，默认空 = 不信任任何头，直接使用 socket peer。生产环境在最外层 Nginx 上**覆盖写**：
@@ -282,6 +298,77 @@ kubectl -n gdutnic cp duty-scheduling-<pod>:/app/data ./data-backup
 | `GITHUB_REPO` / `GITHUB_TOKEN` | GitHub 镜像；未配置则跳过 | 否 |
 | `COSIGN_PRIVATE_KEY` / `COSIGN_PASSWORD` | cosign 签名；未配置则跳过 | 否 |
 | `FORCE_REBUILD` | `true` 时即使镜像已存在也重建 | 否 |
+| `KUBECONFIG_DATA` | base64 编码的 kubeconfig；未配置则跳过部署 | 否 |
+| `VALUES_BASE64` | base64 编码的部署 values（见下）；未配置则跳过部署 | 否 |
+
+`DEPLOY_NAMESPACE`、`DEPLOY_RELEASE`、`DEPLOY_TIMEOUT` 可在 `.gitlab-ci.yml` 的 `helm-deploy.variables` 里改，默认 `gdutnic` / `duty-scheduling` / `10m`。
+
+### 自动部署
+
+`helm-deploy` 只在默认分支运行，依赖 `docker-build-and-push`、`helm-build` 和 `image-sign`，用 CI 产出的 chart 版本和镜像 tag 执行。部署用的 ServiceAccount 建议只授予目标命名空间的权限，因此**命名空间要提前建好**，job 不会执行 `--create-namespace`：
+
+```bash
+helm upgrade --install duty-scheduling \
+  oci://${HARBORHOST}/gdutnic-duty-scheduling/duty-scheduling-helm \
+  --version 0.1.<pipeline-id> \
+  -n gdutnic --create-namespace \
+  --values custom.yaml \
+  --set image.tag=<短SHA> \
+  --atomic --timeout 10m
+```
+
+准备 `KUBECONFIG_DATA`：
+
+```bash
+base64 -w0 ~/.kube/config > kubeconfig.b64
+# 把 kubeconfig.b64 的内容粘到 GitLab 变量 KUBECONFIG_DATA
+```
+
+准备 `VALUES_BASE64`，内容就是部署用的 values 文件，例如：
+
+```yaml
+clientIpHeader: X-Real-Client-IP
+publicBaseUrl: https://attendance.gdutnic.com
+sessionHttpsOnly: "1"
+
+secrets:
+  create: false
+  name: duty-scheduling-secrets
+
+mysql:
+  enabled: false
+database:
+  host: mysql.example.internal
+  port: 3306
+  name: gdutnic
+  user: gdutnic
+
+keycloak:
+  enabled: "true"
+  issuer: https://sso.example.com/realms/gdutnic
+  clientId: duty
+  redirectUri: https://attendance.gdutnic.com/api/auth/keycloak/callback
+
+ingress:
+  enabled: true
+  className: nginx
+  tls: []            # TLS 在外层 Nginx 终止
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: attendance.gdutnic.com
+      paths:
+        - path: /
+          pathType: Prefix
+```
+
+```bash
+base64 -w0 values-production.yaml > values.b64
+# 把 values.b64 的内容粘到 GitLab 变量 VALUES_BASE64
+```
+
+密码等敏感值不要写进 `VALUES_BASE64`：用 `secrets.create: false` + `secrets.name` 引用已有 Secret，或放在 `extraEnv` 的 `valueFrom` 里。`image.tag` 由流水线用当次构建的 tag 覆盖，不需要在 values 里写。
 
 ### cosign 密钥
 
