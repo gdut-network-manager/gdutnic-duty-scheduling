@@ -345,11 +345,13 @@ kubectl -n gdutnic label secret duty-scheduling-secrets app.kubernetes.io/manage
 helm upgrade --install duty-scheduling \
   oci://${HARBORHOST}/gdutnic-duty-scheduling/duty-scheduling-helm \
   --version 0.1.<pipeline-id> \
-  -n gdutnic --create-namespace \
+  -n gdutnic \
   --values custom.yaml \
   --set image.tag=<短SHA> \
-  --atomic --timeout 10m
+  --atomic --timeout 10m --debug
 ```
+
+`--debug` 会在 job 日志里打印 USER-SUPPLIED VALUES 和渲染后的 MANIFEST，排查失败很方便，但也会暴露其中的敏感内容：`secrets.create=true` 时 Secret 的 base64 data 会直接出现在日志里，`VALUES_BASE64` 里的明文密码同样会被打印。因此生产部署应使用 `secrets.create=false` 引用已有 Secret，并不在 values 里写明文密码。
 
 准备 `KUBECONFIG_DATA`：
 
