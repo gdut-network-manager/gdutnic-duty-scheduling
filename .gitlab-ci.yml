@@ -280,6 +280,11 @@ helm-deploy:
 
       # 命名空间由管理员预先创建：CI 用的是 namespaced ServiceAccount，
       # 没有创建 Namespace 的集群级权限，不能用 --create-namespace。
+      #
+      # --debug 会打印 USER-SUPPLIED VALUES 和渲染后的 MANIFEST，方便排查
+      # 部署失败。注意它也会把这些内容写进 job 日志：secrets.create=true 时
+      # Secret 的 data（base64）会暴露，所以生产部署建议用 secrets.create=false
+      # 引用已有 Secret，也不要把明文密码写进 VALUES_BASE64。
       helm upgrade --install "${DEPLOY_RELEASE}" \
         "oci://${HARBORHOST}/${CHART_PROJECT}/${CHART_NAME}" \
         --version "${CHART_VERSION}" \
@@ -288,7 +293,8 @@ helm-deploy:
         --set image.tag="${IMAGE_TAG}" \
         --atomic \
         --timeout "${DEPLOY_TIMEOUT}" \
-        --history-max 10
+        --history-max 10 \
+        --debug
   after_script:
     - rm -f custom.yaml kubeconfig
   rules:
