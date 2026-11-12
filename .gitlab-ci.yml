@@ -2,6 +2,7 @@ stages:
   - check
   - image-build
   - signing
+  - deploy
 
 workflow:
   rules:
@@ -230,4 +231,65 @@ image-sign:
     - rm -f cosign.key
   rules:
     - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# 部署到目标集群。只有默认分支会执行，且需要 GitLab 里配置 KUBECONFIG_DATA
+# 和 VALUES_BASE64；未配置时打印提示并跳过，不会让流水线变红。
+helm-deploy:
+  stage: deploy
+  image: registry.gdut.edu.cn/docker/dtzar/helm-kubectl:3.8.0
+  tags:
+    - dev
+  needs:
+    - job: docker-build-and-push
+      artifacts: true
+    - job: helm-build
+      artifacts: true
+    - job: image-sign
+  # 单副本 + RWO PVC，必须避免两个发布同时操作同一个 release。
+  resource_group: duty-scheduling-deploy
+  environment:
+    name: production
+    url: https://attendance.gdutnic.com
+  variables:
+    DEPLOY_NAMESPACE: gdutnic
+    DEPLOY_RELEASE: duty-scheduling
+    DEPLOY_TIMEOUT: 10m
+  script:
+    - |
+      set -eu
+      if [ -z "${KUBECONFIG_DATA:-}" ] || [ -z "${VALUES_BASE64:-}" ]; then
+        echo "KUBECONFIG_DATA / VALUES_BASE64 未配置，跳过部署。"
+        exit 0
+      fi
+
+      export KUBECONFIG="${CI_PROJECT_DIR}/kubeconfig"
+      printf '%s' "${KUBECONFIG_DATA}" | base64 -d > "${KUBECONFIG}"
+      printf '%s' "${VALUES_BASE64}" | base64 -d > custom.yaml
+      chmod 600 "${KUBECONFIG}" custom.yaml
+
+      echo "部署 ${DEPLOY_RELEASE}/${CHART_NAME}:${CHART_VERSION}，镜像 tag ${IMAGE_TAG}"
+
+      kubectl version --client
+      # kubeconfig 或网络不通时在这里尽早失败，而不是等 helm 超时。
+      kubectl get --raw=/version >/dev/null
+      helm version --short
+
+      echo "${PASSWORD}" | helm registry login "${HARBORHOST}" \
+        --username "${USERNAME}" --password-stdin
+
+      # 命名空间由管理员预先创建：CI 用的是 namespaced ServiceAccount，
+      # 没有创建 Namespace 的集群级权限，不能用 --create-namespace。
+      helm upgrade --install "${DEPLOY_RELEASE}" \
+        "oci://${HARBORHOST}/${CHART_PROJECT}/${CHART_NAME}" \
+        --version "${CHART_VERSION}" \
+        --namespace "${DEPLOY_NAMESPACE}" \
+        --values custom.yaml \
+        --set image.tag="${IMAGE_TAG}" \
+        --atomic \
+        --timeout "${DEPLOY_TIMEOUT}" \
+        --history-max 10
+  after_script:
+    - rm -f custom.yaml kubeconfig
+  rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
