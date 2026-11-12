@@ -255,6 +255,9 @@ helm-deploy:
     DEPLOY_NAMESPACE: gdutnic
     DEPLOY_RELEASE: duty-scheduling
     DEPLOY_TIMEOUT: 10m
+    # --debug 会把 USER-SUPPLIED VALUES（含明文密码）和渲染后的 MANIFEST
+    # 打进 job 日志，只在排查问题时手动触发一次并设为 "true"。
+    HELM_DEBUG: "false"
   script:
     - |
       set -eu
@@ -281,10 +284,15 @@ helm-deploy:
       # 命名空间由管理员预先创建：CI 用的是 namespaced ServiceAccount，
       # 没有创建 Namespace 的集群级权限，不能用 --create-namespace。
       #
-      # --debug 会打印 USER-SUPPLIED VALUES 和渲染后的 MANIFEST，方便排查
-      # 部署失败。注意它也会把这些内容写进 job 日志：secrets.create=true 时
-      # Secret 的 data（base64）会暴露，所以生产部署建议用 secrets.create=false
-      # 引用已有 Secret，也不要把明文密码写进 VALUES_BASE64。
+      # --debug 默认关闭：它会打印 USER-SUPPLIED VALUES（含明文密码）和
+      # 渲染后的 MANIFEST（secrets.create=true 时还有 Secret 的 base64 data），
+      # 都会永久留在 job 日志里。排查问题时临时把 HELM_DEBUG 设为 "true"。
+      HELM_DEBUG_FLAG=""
+      if [ "${HELM_DEBUG:-false}" = "true" ]; then
+        HELM_DEBUG_FLAG="--debug"
+        echo "警告：HELM_DEBUG=true，本次部署会把 values 和 manifest 写入日志。"
+      fi
+
       helm upgrade --install "${DEPLOY_RELEASE}" \
         "oci://${HARBORHOST}/${CHART_PROJECT}/${CHART_NAME}" \
         --version "${CHART_VERSION}" \
@@ -294,7 +302,7 @@ helm-deploy:
         --atomic \
         --timeout "${DEPLOY_TIMEOUT}" \
         --history-max 10 \
-        --debug
+        ${HELM_DEBUG_FLAG}
   after_script:
     - rm -f custom.yaml kubeconfig
   rules:
