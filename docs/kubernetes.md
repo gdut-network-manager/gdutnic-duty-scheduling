@@ -75,6 +75,32 @@ secrets:
 
 至少需要 `MYSQL_PASSWORD`、`SESSION_SECRET`；`KEYCLOAK_CLIENT_SECRET` 可选；`mysql.enabled=true` 时还需要 `MYSQL_ROOT_PASSWORD`。
 
+### 3.3 环境变量优先级
+
+应用只读进程环境变量，`/app/data/.env` 是 `load_dotenv` 补的默认值，且不会覆盖已存在的环境变量，所以**不需要改 PVC 里的 `data/.env`**。容器里的优先级是：
+
+1. `extraEnv`（原始 env 列表，支持 `valueFrom`）
+2. `environment`（键值对）
+3. chart 字段（`database.*`、`keycloak.*`、`clientIpHeader`、`publicBaseUrl` 等）
+4. `envFromSecrets`
+
+Kubernetes 规定 `env` 高于 `envFrom`，因此 `envFromSecrets` 只能提供 chart 没有定义的变量。要覆盖 `MYSQL_HOST`、`KEYCLOAK_ISSUER` 这类已由 chart 渲染的变量，用 `environment` 或 `extraEnv`：
+
+```yaml
+environment:
+  KEYCLOAK_ENABLED: "true"
+  KEYCLOAK_ISSUER: https://sso.example.com
+
+extraEnv:
+  - name: MYSQL_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: my-mysql
+        key: password
+```
+
+值为空的 chart 字段不会渲染，避免用空串遮蔽 Secret 里的值。另外，后台「其他设置」保存过的配置存在数据库里，SSO 等设置一旦在后台保存过，就优先于环境变量回退。
+
 ## 4. MySQL：两种模式
 
 ### 4.1 外部 MySQL（默认）

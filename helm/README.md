@@ -38,9 +38,32 @@ helm upgrade --install duty-scheduling \
 | `ingress.enabled` | 是否创建 Ingress | `false` |
 | `clientIpHeader` | 最外层代理写入的真实 IP 头；空 = 不信任任何头 | 空 |
 | `publicBaseUrl` | MCP OAuth 回调使用的公开地址 | 空 |
-| `sessionHttpsOnly` | `1` 时 Cookie 只走 HTTPS | `"0"` |
-| `environment` | 额外非敏感环境变量 | `{}` |
-| `envFromSecrets` | 额外导入的 Secret 列表 | `[]` |
+| `sessionHttpsOnly` | `1` 时 Cookie 只走 HTTPS；空 = 不设置 | 空 |
+| `environment` | 额外非敏感环境变量，覆盖上面这些字段渲染出的同名变量 | `{}` |
+| `extraEnv` | 原始 env 列表，支持 `valueFrom`，优先级最高 | `[]` |
+| `envFromSecrets` | 额外导入的 Secret 列表（只能是 chart 未定义的变量） | `[]` |
+
+## 环境变量优先级
+
+Kubernetes 规定容器 `env` 的优先级高于 `envFrom`，所以 chart 渲染出来的变量会遮住 `envFromSecrets` 里的同名键。chart 内部的顺序是：
+
+1. 上面这些 values 字段（`database.*`、`keycloak.*` 等）
+2. `environment`
+3. `extraEnv`
+4. `envFromSecrets`（最低，且只在 chart 没有定义该变量时生效）
+
+值为空字符串的字段不会渲染成 `KEYCLOAK_ISSUER=""`，而是直接省略，避免把 Secret 里的值遮成空串。需要从已有 Secret 注入数据库密码这类变量时用 `extraEnv`：
+
+```yaml
+extraEnv:
+  - name: MYSQL_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: my-mysql
+        key: password
+```
+
+应用侧读取顺序是“进程环境变量 > `/app/data/.env`”，因此不需要改 PVC 里的 `data/.env`；`data/.env` 只是非容器部署的默认值。后台「其他设置」里保存过的设置存在数据库，优先于环境变量回退。
 
 ## 两种 Secret 模式
 
