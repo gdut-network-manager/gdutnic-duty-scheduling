@@ -29,3 +29,5 @@ helm
 icon/*.psd
 *.md
 !requirements.txt
+# The About page reads this at runtime, so keep it even though markdown is ignored.
+!description/description.md

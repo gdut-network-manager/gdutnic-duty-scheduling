@@ -6,6 +6,12 @@ set -eu
 
 cd /app
 
+# The admin About page renders description/description.md at request time. The app
+# degrades to an empty card when it is missing, so make a bad image obvious here.
+if [ ! -f description/description.md ]; then
+    echo "[entrypoint] 警告：镜像中缺少 description/description.md，关于页的功能说明将不可用。" >&2
+fi
+
 python -m server.init_data
 
 ATTEMPTS="${DB_WAIT_ATTEMPTS:-60}"

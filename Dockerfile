@@ -66,6 +66,8 @@ COPY --chown=10001:10001 server ./server
 COPY --chown=10001:10001 web ./web
 COPY --chown=10001:10001 icon ./icon
 COPY --chown=10001:10001 sql ./sql
+# Feature guide rendered on the admin About page (server/wiki.py reads it at request time).
+COPY --chown=10001:10001 description ./description
 COPY --chown=10001:10001 requirements.txt .env.example ./
 COPY --chown=10001:10001 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
