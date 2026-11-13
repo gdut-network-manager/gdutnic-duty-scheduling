@@ -44,3 +44,4 @@ output/
 
 # Local container images, Kubernetes manifests and deployment credentials.
 /container/
+/tests/
