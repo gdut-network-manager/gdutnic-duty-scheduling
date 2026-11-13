@@ -209,7 +209,7 @@ upstream 用 `http://duty-scheduling.gdutnic.svc.cluster.local:80`。
 
 ## 6. 真实客户端 IP（IP 签到/限流）
 
-应用只读取 `clientIpHeader` 指定的头，默认空 = 不信任任何头，直接使用 socket peer。生产环境在最外层 Nginx 上**覆盖写**：
+配置 `clientIpHeader` 后，还需通过 `environment.LOGIN_TRUSTED_PROXIES` 填写应用直连代理的 IP 或 CIDR（多个值用逗号分隔）。只有来自这些地址的请求才能使用该头。未配置 `clientIpHeader` 时，打卡和外勤使用直连地址，登录限流对受信任的直连代理读取 `X-Real-IP`。在最外层 Nginx 上**覆盖写**：
 
 ```nginx
 location / {
@@ -241,7 +241,7 @@ curl -s https://duty.example.com/api/network-access
 ## 7. HTTPS 与 OAuth 回调
 
 - TLS 在最外层 Nginx 终止时，设置 `sessionHttpsOnly=1`，浏览器侧 Cookie 会带 `Secure`。
-- 设置 `publicBaseUrl=https://duty.example.com`。MCP/Outline 的 OAuth 回调会用这个地址拼接，不再依赖 `request.base_url`；Keycloak 仍使用后台配置的 `KEYCLOAK_REDIRECT_URI`。
+- 设置 `publicBaseUrl=https://duty.example.com`。启动日志会用该地址显示管理员入口。Keycloak 使用后台配置的 `KEYCLOAK_REDIRECT_URI`。
 - 如果站点还要通过纯 HTTP 访问，保持 `sessionHttpsOnly=0`。
 
 ## 8. 安装后检查

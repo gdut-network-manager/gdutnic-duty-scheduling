@@ -306,7 +306,7 @@ SSO 默认关闭，且身份提供方地址默认为空：本应用不带任何�
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `LOGIN_TRUSTED_PROXIES` | 登录限流可信任的代理 IP / CIDR，逗号分隔；仅这些 socket 来源可通过代理覆写的 `X-Real-IP` 区分客户端，不影响打卡来源 IP 判定 | 空，不信任转发头 |
+| `LOGIN_TRUSTED_PROXIES` | 登录限流可信任的代理 IP / CIDR，逗号分隔；仅这些 socket 来源可通过代理覆写的 `X-Real-IP` 区分客户端，配置 CLIENT_IP_HEADER 后也用于校验打卡和外勤的来源 | 空，不信任转发头 |
 | `DB_BACKEND` | `mysql` 或 `sqlite` | `mysql` |
 | `MYSQL_HOST` | 数据库地址 | `127.0.0.1` |
 | `MYSQL_PORT` | 数据库端口 | `3306`（`.env.example` 中为 Docker 的 `3307`） |
@@ -409,7 +409,7 @@ helm upgrade --install duty-scheduling ./helm \
 - 应用是**单副本有状态服务**，`/app/data` 必须挂 PVC；chart 固定 `Recreate`，不要调大副本数。
 - MySQL 支持「外部库」和「chart 内置」两种模式，用 `mysql.enabled` 切换。
 - Secret 支持 chart 自动生成和引用已有 Secret 两种模式。
-- Ingress、NodePort、集群内外层 Nginx 三种入口都支持；真实 IP 由最外层 Nginx 覆盖写 `X-Real-Client-IP`，应用通过 `clientIpHeader` 启用。
+- Ingress、NodePort、集群内外层 Nginx 三种入口都支持；真实 IP 由最外层 Nginx 覆盖写 `X-Real-Client-IP`，同时设置 `clientIpHeader` 和 `environment.LOGIN_TRUSTED_PROXIES`，后者填写应用直连代理的 IP 或 CIDR。
 - 健康检查：`/healthz`（liveness，不查库）、`/readyz`（readiness，执行 `SELECT 1`）。
 
 完整步骤（三种拓扑、两种数据库、两种 Secret、外部 Nginx 配置、备份与回滚）见 [docs/kubernetes.md](docs/kubernetes.md)。
