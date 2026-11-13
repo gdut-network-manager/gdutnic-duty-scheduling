@@ -8,9 +8,8 @@ from pathlib import Path
 
 from server import db
 
-TABLES = ('settings', 'users', 'permission_groups', 'member_accounts', 'oauth_clients', 'visitors',
-          'chats', 'messages', 'shifts', 'attendance', 'attendance_history', 'operation_log',
-          'weekly_instances', 'push_deliveries')
+TABLES = ('settings', 'users', 'permission_groups', 'member_accounts', 'shifts', 'attendance',
+          'attendance_history', 'operation_log', 'weekly_instances', 'push_deliveries')
 
 
 def migrate(source):

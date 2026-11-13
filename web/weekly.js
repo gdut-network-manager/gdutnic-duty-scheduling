@@ -85,7 +85,7 @@ $('clearForm').onsubmit = async e => {
     const result = await api('/api/admin/schedules', 'DELETE');
     $('clearDialog').close();
     await load();
-    $('weeklyStatus').textContent = `已清除 ${result.deleted} 个班次，其中 ${result.archived} 条打卡记录已归档保留，可继续查询出勤历史。`;
+    $('weeklyStatus').textContent = `已清除 ${result.deleted} 个班次，其中 ${result.archived} 条考勤记录已归档保留，可继续查询出勤历史。`;
   } catch (err) { $('clearStatus').textContent = err.message; }
   finally { submit.disabled = false; }
 };

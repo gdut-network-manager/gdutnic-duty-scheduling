@@ -1,4 +1,3 @@
-
 # GDUTNIC 排班签到
 
 网络服务协会的值班排班与签到系统。普通成员用姓名和密码（或 GDUTNIC 单点登录）登录，在概览里查看自己的排班、签到并登记外勤；管理员在管理端维护每日/每周/特殊排班、账号权限、外勤登记与考勤统计，并可限制打卡只能在校内网络完成。界面采用 Material You 风格，支持浅色与深色模式、跟随系统主题。
@@ -34,7 +33,8 @@ python -m server.init_data && docker compose --env-file data/.env up -d --wait m
 gdutnic-duty-scheduling/
 ├── server/                 后端（FastAPI）
 │   ├── app.py              应用入口、路由、会话与权限校验
-│   ├── app_version.py      部署版本读取（环境变量、VERSION 文件或 Git）
+│   ├── app_version.py      写死的版本号常量
+│   ├── wiki.py             解析 description/description.md，供关于页的 Wiki 卡片使用
 │   ├── db.py               MySQL/SQLite 连接、事务与建表升级
 │   ├── schedule_store.py   班次、签到与连班自动签到
 │   ├── weekly_store.py     每周模板、CSV 名单与按日期生成
@@ -55,10 +55,10 @@ gdutnic-duty-scheduling/
 │   ├── sso_settings.py     后台 SSO 配置与环境变量回退
 │   ├── attendance_live.py  考勤变更版本号与长轮询通知
 │   ├── log_rotation.py     data/logs 文件按 10MB / 5MB 截断
+│   ├── table_rotation.py   出勤归档、外勤、调班、推送、SSO 绑定按 10MB / 7MB 裁剪
 │   ├── migrate_mysql.py    SQLite → MySQL 迁移
 │   ├── provision_members.py 补齐名单账号
-│   ├── grant_admin.py      给账号补授全部权限
-│   └── chat.py / qq_bot.py / mcp_client.py / oauth.py  旧版 Wiki 助手（未启用）
+│   └── grant_admin.py      给账号补授全部权限
 ├── web/                    前端静态页
 │   ├── index.html          成员端：登录、概览（当日排班与外勤登记）、排班列表、外勤确认
 │   ├── admin.html          管理端：概览、排班、调班、用户、外勤、设置、关于
@@ -79,6 +79,7 @@ gdutnic-duty-scheduling/
 │   ├── checkin-window.js   签到窗口判定
 │   ├── member-network.js   成员端网络状态与按钮置灰
 │   ├── idle-session.js     无操作倒计时与自动退出
+│   ├── nav-drawer.js       窄屏下的顶栏与左侧导航抽屉
 │   ├── attendance-live.js  全局心跳与考勤长轮询
 │   ├── keycloak-login.js   登录页 SSO 入口显隐
 │   ├── keycloak-bind.js    未自动匹配时的本地账号绑定
@@ -89,12 +90,12 @@ gdutnic-duty-scheduling/
 │   ├── data-admin.js       数据管理：预览、编辑、删除数据库记录
 │   ├── keycloak-bind.html  首次 SSO 绑定页（输入本地账号密码）
 │   ├── theme.js / theme.css  两端主题切换、系统主题跟随与深色配色
-│   ├── about.js            管理端关于页与版本读取
+│   ├── about.js            管理端关于页：版本读取与 Wiki 卡片
 │   ├── auth-background.js  登录页轻量 CSS 渐变背景显隐控制
 │   └── styles.css / schedule.css / auth-background.css  Material You 样式
 ├── sql/mysql_schema.sql    MySQL 建表语句
-├── tests/                  Python 与 Node 测试
 ├── docs/                   部署与验证记录（Keycloak 配置、安全复核）
+├── description/            功能说明 description.md（关于页 Wiki 卡片的内容来源）
 ├── icon/                   本地图标：站点 Logo、主题、关于、GitHub 及组件 SVG
 ├── data/                   运行时数据（不提交）
 │   ├── .env                数据库凭证与运行配置
@@ -113,7 +114,11 @@ gdutnic-duty-scheduling/
 
 ### 浅色与深色主题
 
-管理端和用户端导航栏「网络服务协会」右侧提供仅含图标的太阳／月亮主题按钮，图标表示当前模式。首次访问时跟随系统主题，系统主题变化也会同步；手动切换后优先使用保存在浏览器中的选择，两端及同源标签页共享。浅色模式保留原有配色；深色主题使用 Material 3 蓝青色配色，错误、成功和警告统一采用 Container 背景与 On Container 文字的层级。按钮 SVG 图标跟随前景色，协会 Logo 在深色下显示为浅色。主题图标分别为 `/icon/weather-sunny.svg` 与 `/icon/weather-night.svg`。主题由 `web/theme.js` 和 `web/theme.css` 统一管理，最低兼容目标为 Chromium / Edge 134。
+管理端和用户端导航栏「网络服务协会」右侧提供仅含图标的太阳／月亮主题按钮，图标表示当前模式。每次打开或刷新页面时重新读取系统主题。手动切换仅对当前页面生效；尚未手动切换时，页面会同步系统主题变化。浅色模式保留原有配色；深色主题使用 Material 3 蓝青色配色，错误、成功和警告统一采用 Container 背景与 On Container 文字的层级。按钮 SVG 图标跟随前景色，协会 Logo 在深色下显示为浅色。主题图标分别为 `/icon/weather-sunny.svg` 与 `/icon/weather-night.svg`。主题由 `web/theme.js` 和 `web/theme.css` 统一管理，最低兼容目标为 Chromium / Edge 134。
+
+### 移动端导航
+
+窗口宽度不超过 800px 时，两端的侧栏收起为左侧抽屉：页面顶部出现一条顶栏，左侧为菜单按钮，右侧显示当前页面名称。点菜单按钮滑出抽屉；选择页面、点遮罩或按 Esc 关闭，切换主题时抽屉保持打开。导航项较多时在抽屉内滚动，「退出登录」始终固定在底部。窄屏下页面标题区随内容滚动，不再吸顶。由 `web/nav-drawer.js` 与 `web/schedule.css` 末尾的规则实现，桌面宽度下不受影响。
 
 ### 登录背景浏览器兼容
 
@@ -144,6 +149,10 @@ docker compose --env-file data/.env up -d --wait mysql
 
 ### 管理端概览
 
+考勤结果保存在 `attendance.final_status`，管理员改判同时保存 `status_override` 与最终状态。概览和邮件报表汇总已保存状态，修改签到时间或阈值不会重算已有结果。新签到立即保存判定；未签到且超过旷班阈值的记录由后台定期确认。清除排班时，最终结果一并保存到 `attendance_history.final_status`，包括人工确认但未签到的记录。
+
+旧数据中已有人工改判继续生效；仅有签到时间、缺少最终状态的历史记录显示「待确认」，不推算迟到或旷班，未归档记录可在概览中手工确认。缺少状态的旧归档不计入统计。新增字段由数据库初始化流程自动补齐。
+
 - 固定显示本月出勤率、迟到数、旷班数。三个统计药丸保持单行，内容过长自动撑宽，空间不足时整组隐藏。
 - 时间轴显示当前值班与人员姓名；下方周历按真实班次显示第一至第四班，缺班留空。只有从「特殊排班」新增的班次才进入特殊排班行；该周有特殊排班时才显示，与第四班间隔一个普通班次行高度，每天按开始时间纵向排列。
 - **周排班翻页与整周删除**：周历两侧的箭头查看上一周 / 下一周，范围覆盖有排班的最早到最晚一周；到边界时对应箭头变灰禁用，中间没有排班的周仍可翻到。翻到其他周时标题变为「周排班」，并出现「回到本周」。
@@ -151,7 +160,7 @@ docker compose --env-file data/.env up -d --wait mysql
 - 点击本周卡片打开详情，再点击某个人名可改判考勤状态。
 - **查看日志**：记录管理员与值班账号的操作，按时间倒序显示时间、操作账号、操作内容，可按账号筛选或搜索关键字。覆盖登录、账号增删改、权限与密码变更、排班/特殊排班/每周模板/生成排班/清除排班、调班、考勤与外勤改判、值班签到、外勤登记与确认、系统时间与值班时间设置。页面顶部显示日志表当前占用的存储空间。
   - **容量上限**：操作日志总量超过 10 MB 时自动删除最旧的记录，直到降到 5 MB 以下；因此长期运行时只会保留最近一段时间的记录，更早的审计信息会被清理。检查在每次写入后按固定间隔进行，并在后台每 5 分钟复查一次，无需手动清理。
-- **数据管理**：左侧列出可访问的数据表与行数，右侧分页预览记录（每页 50 行，支持表内搜索）。可直接编辑或删除单行；只有白名单中的列可写，主键只读。密码、密钥类字段显示为 `••••••`，也无法通过此页修改——改密码请走用户管理。操作日志不可改写也不可删除；出勤归档只允许删除；**站点设置**只能查看，只能修改允许的数据项，且不能删除整行；**原始管理员（旧版记录）**是只读的历史记录。**管理员账号**的记录同样受保护：没有「用户管理」权限时，数据管理不能停用或删除管理员账号。表名和列名全部来自服务端白名单，请求不会拼进 SQL 标识符。
+- **数据管理**：左侧列出可访问的数据表与行数，右侧分页预览记录（每页 50 行，支持表内搜索）。可直接编辑或删除单行；只有白名单中的列可写，主键只读。密码、密钥类字段显示为 `••••••`，也无法通过此页修改——改密码请走用户管理。操作日志不可改写也不可删除；出勤归档只允许删除；**站点设置**只能查看，不能修改，也不能删除整行；**原始管理员（旧版记录）**是只读的历史记录。**权限组**、**推送发送记录**、**SSO 绑定**、**登录会话**同样只能查看，登录会话的会话标识不显示；SSO 登录过程中的临时记录不在此列出。**管理员账号**的记录同样受保护：没有「用户管理」权限时，数据管理不能停用或删除管理员账号。表名和列名全部来自服务端白名单，请求不会拼进 SQL 标识符。
   - **考勤人员**额外显示所属班次的日期与起止时间（`班次.day` / `班次.start` / `班次.end`），未签到时也能看出这条记录属于哪一班。
   - **多选与批量删除**：点击行内按钮以外的区域即可选中该行（变蓝），按住 Shift 点击可批量选中连续区间；再次点击已选行会取消。底部「清除该页」删除当前页面（含当前搜索条件）的所有行；选中后其左侧出现「清除选中（n）」，取消全部选中后自动消失。两者都需输入确认语，且都会跳过原始管理员。
 - **异常统计**（在本周排班下方）：可切换「近 2 周 / 近 4 周」，左右两栏分别为「迟到次数统计」与「旷班次数统计」，用横向柱状图展示对应次数，柱右侧标注次数；次数相同按姓名拼音排序。历史不足所选周数时，统计窗口内已有的全部记录。
@@ -212,14 +221,16 @@ docker compose --env-file data/.env up -d --wait mysql
 - 联系邮箱：[andyzhang32767@gmail.com](mailto:andyzhang32767@gmail.com)。
 - GitHub 图标从 Primer Octicons 下载后保存在 `/icon/github.svg`，运行时不依赖外链图标；来源与许可见 `icon/README.md` 和 `icon/github-LICENSE.txt`。
 
-版本由 `/api/admin/about` 在管理员登录后提供，按以下顺序读取：
+版本号固定写在 `server/app_version.py` 的 `VERSION` 常量中（当前为 `V1.2-dev`），由 `/api/admin/about` 在管理员登录后提供；不读取环境变量、`VERSION` 文件或 Git 信息。发布新版本时修改该常量。更新后端代码后需重启应用，才能加载新增或修改的接口。
 
-1. 非空的 `APP_VERSION` 环境变量。
-2. 项目根目录非空的 `VERSION` 文件。
-3. `git describe --tags --always --dirty` 的输出；工作区有已跟踪文件的未提交修改时带有 `-dirty` 标记。
-4. 无法读取上述信息时显示「开发版（无版本标记）」。
+**Wiki 卡片**：关于卡片下方的第二张卡片，内容来自 `description/description.md`，由 `/api/admin/about` 随版本号一起返回，登录管理端即可查看。
 
-发布不含 `.git` 的源码包或镜像时，应设置 `APP_VERSION` 或提供 `VERSION` 文件。更新后端代码后需重启应用，才能加载新增或修改的接口。
+- 最上面的「速览」平铺列出文档里所有标为「核心」的功能，每项显示功能名、位置和说明；整块可以折叠，默认展开。
+- 内容按当前账号的权限过滤：管理端的页面只有拥有同名权限时才列出，「其他设置」里的每一项还要拥有「所需权限」列写的权限，「仅原始管理员」的项只有原始管理员能看到。成员端、登录页和自动行为的说明对所有管理员可见。有内容被过滤时卡片顶部会提示。
+- 下面按文档的二级标题分区（成员端、SSO 绑定页、管理端、自动行为），每个三级标题是一个可折叠的页面，展开后显示该页的位置、每项功能的重要程度与说明，以及表格之外的补充说明。
+- 修改 `description/description.md` 后重新打开关于页即可看到新内容，不需要重启。文档约定：每个页面写一行「位置：…」，功能表的表头含「功能」（或「行为」）、「重要程度」、「说明」三列，可选「所需权限」列；其他表格不显示。
+- 部署时没有带上这个文件，卡片会提示未附带文档，其余功能不受影响。
+
 
 ### 消息推送
 
@@ -295,8 +306,7 @@ SSO 默认关闭，且身份提供方地址默认为空：本应用不带任何�
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `LOGIN_TRUSTED_PROXIES` | 登录限流可信任的代理 IP / CIDR，逗号分隔；仅这些 socket 来源可通过代理覆写的 `X-Real-IP` 区分客户端，不影响打卡来源 IP 判定 | 空，沿用 `CLIENT_IP_HEADER` 配置 |
-| `APP_VERSION` | 「关于」页显示的部署版本，优先于根目录 `VERSION` 文件与 Git 版本 | 未设置时依次回退 |
+| `LOGIN_TRUSTED_PROXIES` | 登录限流可信任的代理 IP / CIDR，逗号分隔；仅这些 socket 来源可通过代理覆写的 `X-Real-IP` 区分客户端，配置 CLIENT_IP_HEADER 后也用于校验打卡和外勤的来源 | 空，不信任转发头 |
 | `DB_BACKEND` | `mysql` 或 `sqlite` | `mysql` |
 | `MYSQL_HOST` | 数据库地址 | `127.0.0.1` |
 | `MYSQL_PORT` | 数据库端口 | `3306`（`.env.example` 中为 Docker 的 `3307`） |
@@ -367,14 +377,15 @@ python -m uvicorn server.app:app --host 0.0.0.0 --port 50025 --no-proxy-headers
   - `.env`：数据库凭证与本地配置；
   - `mysql/`：本地 MySQL 数据、证书与日志；
   - `mysql-config/runtime.cnf`：按本地文件系统大小写规则生成的 MySQL 配置；
-  - `logs/`：运行日志（QQ 机器人等），单个文件超过 10 MB 时自动截断到 5 MB，只保留完整的最后若干行；
+  - `logs/`：运行日志，单个文件超过 10 MB 时自动截断到 5 MB，只保留完整的最后若干行；
   - `session_secret.txt`：会话签名密钥；
   - `weekly_roster.json`：每周名单种子（仅在没有已保存模板时读取）；
   - `imports/`：排班表与 CSV 模板等导入文件；
   - `app.sqlite`、`backups/`：旧版 SQLite 与迁移备份。
+  - **记录表容量上限**：出勤归档、外勤记录、调班、推送发送记录、SSO 绑定这五张表各自独立计量，任一张超过 10 MB 时自动删除最旧的记录，直到降到 7 MB 以下；后台每 5 分钟检查一次，无需手动清理，界面上不另行提示。出勤归档与调班按写入先后、外勤按月份、推送按最近更新时间、SSO 绑定按绑定时间判断新旧（升级前已有的绑定没有绑定时间，视为最旧）。被清理的出勤归档与外勤月份不再计入统计；被清理的调班只删除记录，已互换的班次保持不变；被清理的 SSO 绑定会同时注销对应账号的 SSO 登录，该账号需重新绑定。操作日志仍按 10 MB / 5 MB 处理。
   - 会话租约、SSO 绑定与 SSO 配置保存在应用数据库内（不是 `data/` 里的独立文件），因此重置 MySQL 会同时清除这些状态。
 - 首次初始化创建 `data/`、配置及 `mysql/`、`mysql-config/`、`imports/`、`backups/`、`logs/`、`certs/` 子目录。SQLite 表和会话密钥按需创建；不生成包含真实人员的种子名单。
-- 升级现有部署时，启动过程会补齐新表与字段（`login_sessions`、`keycloak_links`、`keycloak_flows`，以及会员账号的 `sso_id`、`sso_auto_link_blocked`），不会覆盖已有数据；首次加入心跳功能时会清空旧登录租约，所有人在升级后需要重新登录一次。
+- 升级现有部署时，启动过程会补齐新表与字段（`login_sessions`、`keycloak_links`、`keycloak_flows`，以及会员账号的 `sso_id`、`sso_auto_link_blocked` 和 SSO 绑定的 `linked_at`），不会覆盖已有数据；首次加入心跳功能时会清空旧登录租约，所有人在升级后需要重新登录一次。
 - SQL 导出统一放在 `data/backups/`，证书放在 `data/certs/`。`MYSQL_SSL_CA` 的相对路径相对于 `data/`。备份 MySQL 使用逻辑备份（如 `mysqldump`），或停库后备份 `data/mysql/`。
 - `sql/mysql_schema.sql` 只有建表结构，保留在源码中；`.env.example` 只有占位配置。Git 忽略整个 `data/`，并额外忽略数据库文件、SQL 导出、私钥、证书及人员表格，防止误放到其他目录后被提交。
 
@@ -398,7 +409,7 @@ helm upgrade --install duty-scheduling ./helm \
 - 应用是**单副本有状态服务**，`/app/data` 必须挂 PVC；chart 固定 `Recreate`，不要调大副本数。
 - MySQL 支持「外部库」和「chart 内置」两种模式，用 `mysql.enabled` 切换。
 - Secret 支持 chart 自动生成和引用已有 Secret 两种模式。
-- Ingress、NodePort、集群内外层 Nginx 三种入口都支持；真实 IP 由最外层 Nginx 覆盖写 `X-Real-Client-IP`，应用通过 `clientIpHeader` 启用。
+- Ingress、NodePort、集群内外层 Nginx 三种入口都支持；真实 IP 由最外层 Nginx 覆盖写 `X-Real-Client-IP`，同时设置 `clientIpHeader` 和 `environment.LOGIN_TRUSTED_PROXIES`，后者填写应用直连代理的 IP 或 CIDR。
 - 健康检查：`/healthz`（liveness，不查库）、`/readyz`（readiness，执行 `SELECT 1`）。
 
 完整步骤（三种拓扑、两种数据库、两种 Secret、外部 Nginx 配置、备份与回滚）见 [docs/kubernetes.md](docs/kubernetes.md)。
@@ -417,19 +428,16 @@ helm upgrade --install duty-scheduling ./helm \
 
 ## 验证与本地测试
 
-学校仓库保留 Python 与 Node 测试。使用临时 SQLite 运行常规测试：
-
-```bash
-python -m unittest discover -s tests
-node --test tests/*.cjs
-```
+`/test/` 与 `/tests/` 已加入 Git 忽略，测试文件仅在本地保留，不随公开仓库分发。新克隆的仓库不包含测试套件。
 
 更新后可按以下流程检查：
 
 1. 启动应用，确认成员端与管理员登录页正常显示，密码显隐按钮可用。
-2. 登录后切换浅色与深色模式，刷新页面并在两端之间切换，确认手动选择保留；未手动选择的浏览器应跟随系统主题。
+2. 登录后切换浅色与深色模式，刷新页面或重新打开两端，确认重新采用系统主题；尚未手动切换时，确认页面会跟随系统主题变化。
 3. 核对管理员概览中的「迟到次数统计」「旷班次数统计」，以及「其他设置」下方的「关于」页、部署版本、仓库与反馈链接。
 4. 在专用测试环境验证排班、签到、外勤登记与确认；避免使用生产数据执行删除、清空或权限变更检查。
+
+本轮登录背景与主题检查使用 macOS ARM64 的 Chrome for Testing 134.0.6998.165；这不等于已完成 Windows Edge 134 的实机验收。拥有本地测试套件的维护者仍可按需运行 Python 与 Node 测试，但不会将测试文件重新加入版本控制。
 
 ## 安全
 
@@ -440,21 +448,50 @@ node --test tests/*.cjs
 - 已设置禁止页面被嵌套、禁止外链脚本、不发送 Referer、禁止 MIME 嗅探等响应头。
 - 公网部署请使用 HTTPS，并设置 `SESSION_HTTPS_ONLY=1`。
 - 本项目未内置 WAF 与限流之外的防护，公网部署建议放在反向代理之后。
-
-### 旧版 Wiki 助手（MCP）的边界
-
-连接、OAuth、凭证恢复和聊天需要登录本地成员或管理员账号；目标地址只读取管理员配置，忽略请求和旧会话中的地址。OAuth 元数据中的端点必须与该地址同源，服务端不跟随重定向。管理员仍可配置内网 Wiki，请仅配置可信服务。反向代理部署请保留启动脚本的 `--no-proxy-headers`（同一代理后的用户共享来源限额）。
+- 反向代理部署请保留启动脚本的 `--no-proxy-headers`（同一代理后的用户共享来源限额）。
 
 历史问题的复现与修复记录见 [安全验证记录](docs/security-validation-2026-11-09.md)，性能相关的改动记录见 [内存与运行速度优化](docs/performance.md)。
 
 ## 版本与 Git 使用
 
-- `origin` 指向学校仓库 `gdut-network-manager/gdutnic-duty-scheduling`，`personal` 指向个人上游 `AndyZhang32767/gdutnic-duty-scheduling`。
-- 从学校的 `origin/master` 创建工作分支，推送该分支后向学校的 `master` 发起 PR。
-- 更新部署前参照 [Kubernetes 部署文档](docs/kubernetes.md)。
+- 远端：`origin` → `https://github.com/AndyZhang32767/gdutnic-duty-scheduling.git`
+- 分支：`master` 为已发布的稳定版本；`dev` 为当前开发分支，新功能先进入 `dev`，验证后再合并到 `master`。仓库里另有一个早期快照分支 `v0.1`，仅作留档。截图、日志、`data/` 等运行时产物都不提交；`test/`、`tests/` 和本地 `container/` 目录也不提交。
+- 更新本地代码前先停止正在运行的应用，避免启动脚本升级数据库时与运行中的进程冲突：
+
+```bash
+git switch dev
+git pull --ff-only
+bash start.sh          # Windows 用 start.bat
+```
+
+- 检查当前状态与差异：
+
+```bash
+git status
+git diff                            # 未暂存的改动
+git log --oneline --graph -10       # 最近提交
+git log origin/master..dev --stat   # dev 相对 master 多了哪些改动
+```
+
+- 提交与推送：
+
+```bash
+git add -A
+git commit -m "简短说明改动内容"
+git push                            # dev 已跟踪 origin/dev
+```
+
+- 把 `dev` 的改动发布到 `master`：
+
+```bash
+git switch master
+git pull --ff-only
+git merge --no-ff dev
+git push origin master
+```
 
 - 提交信息沿用现有风格：一行祈使句标题（中文或英文均可），需要时在正文按模块列出关键改动与影响，并注明测试结果。
-- `.gitignore` 已排除 `data/`、`.env`、数据库与 SQL 导出、私钥与证书、人员表格、日志、`container/`、`output/` 以及 `.playwright-cli/`。若 `git status` 里出现这些路径，说明规则失效，应先修正再提交。
+- `.gitignore` 已排除 `data/`、`.env`、数据库与 SQL 导出、私钥与证书、人员表格、日志、`test/`、`tests/`、`container/`、`output/` 以及 `.playwright-cli/`。若 `git status` 里出现这些路径，说明规则失效，应先修正再提交。
 - 部署机只需要源代码：拉到新版本后按「一行部署」或「启动」重新执行启动脚本即可，脚本会自动补齐新增表与字段，不会清空已有数据库。
 
 ## 开源协议

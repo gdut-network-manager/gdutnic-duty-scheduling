@@ -1,13 +1,27 @@
 // 操作日志：时间、操作账号、操作内容，支持按账号与关键字筛选。
-async function loadLogs() {
+let logPage = 0;
+let logRequest = 0;
+async function loadLogs(page = 0) {
+  const request = ++logRequest;
+  $('logPrev').disabled = true;
+  $('logNext').disabled = true;
   $('logsStatus').textContent = '正在加载日志…';
-  const params = new URLSearchParams({limit: '300'});
+  const params = new URLSearchParams({limit: '100', offset: String(page * 100)});
   const actor = $('logActor').value;
   const query = $('logSearch').value.trim();
   if (actor) params.set('actor', actor);
   if (query) params.set('q', query);
   try {
     const data = await api('/api/admin/logs?' + params.toString());
+    if (request !== logRequest) return;
+    logPage = page;
+    const total = Number.isFinite(data.total) && data.total >= 0
+      ? data.total : data.items.length;
+    const pages = Math.ceil(total / 100);
+    const currentPage = total === 0 ? 0 : page + 1;
+    $('logPage').textContent = `第 ${currentPage} / ${pages} 页 · 共 ${total} 行`;
+    $('logPrev').disabled = total === 0 || page === 0;
+    $('logNext').disabled = total === 0 || !data.has_more;
     const rows = $('logRows');
     rows.replaceChildren();
     if (!data.items.length) {
@@ -50,13 +64,17 @@ async function loadLogs() {
       : '';
     $('logsStatus').textContent = `共 ${data.items.length} 条记录${query ? `，匹配“${query}”` : ''}。${usage}`;
   } catch (err) {
+    if (request !== logRequest) return;
+    $('logPrev').disabled = logPage === 0;
     $('logsStatus').textContent = err.message;
   }
 }
 
 $('logsTab').onclick = () => { showPage('logs'); loadLogs(); };
-$('logRefresh').onclick = loadLogs;
-$('logActor').onchange = loadLogs;
+$('logRefresh').onclick = () => loadLogs();
+$('logActor').onchange = () => loadLogs();
+$('logPrev').onclick = () => loadLogs(Math.max(0, logPage - 1));
+$('logNext').onclick = () => loadLogs(logPage + 1);
 let logSearchTimer = 0;
 $('logSearch').addEventListener('input', () => {
   clearTimeout(logSearchTimer);

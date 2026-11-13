@@ -120,18 +120,20 @@ function renderDataPreview() {
       tr.append(td);
     }
     const actions = el('td', 'data-actions');
+    const actionButtons = el('div', 'data-action-buttons');
+    actions.append(actionButtons);
     const edit = el('button', 'btn small tonal', '编辑');
     edit.type = 'button';
     edit.disabled = !data.columns.some(column => column.editable);
     edit.title = edit.disabled ? '这张表不支持在此修改' : '编辑这一行';
     edit.onclick = () => openDataEdit(row);
-    actions.append(edit);
+    actionButtons.append(edit);
     // Protected rows (the 原始管理员, or tables such as 站点设置) get no delete button.
     if (row.deletable !== false) {
       const remove = el('button', 'btn small danger', '删除');
       remove.type = 'button';
       remove.onclick = () => openDataDelete(row);
-      actions.append(remove);
+      actionButtons.append(remove);
     }
     tr.append(actions);
     rows.append(tr);
@@ -149,23 +151,27 @@ async function loadDataTables() {
   return data.items;
 }
 
+function dataShowError(message) {
+  const tr = el('tr'), td = el('td', 'data-empty', message);
+  td.setAttribute('role', 'alert');
+  tr.append(td);
+  $('dataHead').replaceChildren();
+  $('dataRows').replaceChildren(tr);
+}
+
 async function loadDataPreview({keepSelection = false} = {}) {
   if (!dataTable) return;
   if (!keepSelection) dataResetSelection();
-  $('dataStatus').textContent = '正在读取…';
   try {
     const params = new URLSearchParams({page: String(dataPageNo), size: '50'});
     const query = $('dataSearch').value.trim();
     if (query) params.set('q', query);
     dataPreview = await api(`/api/admin/data/tables/${encodeURIComponent(dataTable)}?${params}`);
     renderDataPreview();
-    $('dataStatus').textContent = '';
   } catch (err) {
     dataPreview = null;
     dataResetSelection();
-    $('dataHead').replaceChildren();
-    $('dataRows').replaceChildren();
-    $('dataStatus').textContent = err.message;
+    dataShowError(err.message);
     dataSyncSelectionUI();
   }
 }
@@ -226,7 +232,6 @@ $('dataEditForm').onsubmit = async e => {
     $('dataEditDialog').close();
     await loadDataTables();
     await loadDataPreview();
-    $('dataStatus').textContent = '已保存修改。';
   } catch (err) {
     $('dataEditStatus').textContent = err.message;
   } finally {
@@ -257,7 +262,6 @@ $('dataDeleteForm').onsubmit = async e => {
     $('dataDeleteDialog').close();
     await loadDataTables();
     await loadDataPreview();
-    $('dataStatus').textContent = '已删除 1 行。';
   } catch (err) {
     $('dataDeleteStatus').textContent = err.message;
   } finally {
@@ -271,7 +275,7 @@ $('dataTab').onclick = async () => {
     try {
       const tables = await loadDataTables();
       if (tables.length) await selectDataTable(tables[0].name);
-    } catch (err) { $('dataStatus').textContent = err.message; }
+    } catch (err) { dataShowError(err.message); }
   } else {
     await loadDataTables();
     await loadDataPreview();
@@ -296,7 +300,6 @@ $('dataClearPage').onclick = () => {
     onDone: async () => {
       await loadDataTables();
       await loadDataPreview();
-      $('dataStatus').textContent = '已清除当前页。';
     },
   });
 };
@@ -316,7 +319,6 @@ $('dataClearSelected').onclick = () => {
     onDone: async () => {
       await loadDataTables();
       await loadDataPreview();
-      $('dataStatus').textContent = '已清除选中的记录。';
     },
   });
 };

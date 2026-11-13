@@ -41,7 +41,7 @@ MEMBER_PERMISSIONS = ('duty', 'schedule_list', 'member_field', 'field_confirm')
 ADMIN_PERMISSIONS = frozenset(PERMISSIONS) - set(MEMBER_PERMISSIONS)
 TREE = [
     {'id': 'member_area', 'label': '成员端', 'hint': '成员页面的侧栏入口', 'children': [
-        {'id': 'member_overview_group', 'label': '概览', 'hint': '概览始终展示；分别控制打卡和外勤操作', 'children': [
+        {'id': 'member_overview_group', 'label': '概览', 'hint': '开放打卡或外勤任一项即展示概览；两项都关闭时隐藏，登录后打开侧栏中的第一个页面', 'children': [
             {'id': key, 'label': PERMISSIONS[key][0], 'hint': PERMISSIONS[key][1]}
             for key in ('duty', 'member_field')]},
         *[{'id': key, 'label': PERMISSIONS[key][0], 'hint': PERMISSIONS[key][1]}

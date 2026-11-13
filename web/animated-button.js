@@ -28,6 +28,13 @@ function animatedButton(label, hoverLabel, onPress, extraClass = '') {
 
 if (typeof window !== 'undefined') window.animatedButton = animatedButton;
 
+// Wait for the actual completion transitions, including reduced-motion overrides.
+async function playRegistrationAnimation(button) {
+  getComputedStyle(button).backgroundColor;
+  button.classList.add('registered');
+  await Promise.allSettled(button.getAnimations({subtree: true}).map(animation => animation.finished));
+}
+
 // Keeps the label in sync when the check-in window opens/closes.
 function setAnimatedButtonState(btn, text, label, {disabled = false, registered = false} = {}) {
   if (registered) btn.classList.add('registered');

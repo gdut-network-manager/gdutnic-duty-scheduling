@@ -44,4 +44,7 @@ output/
 
 # Local container images, Kubernetes manifests and deployment credentials.
 /container/
+
+# Keep all tests local; do not upload them to the repository.
+/test/
 /tests/

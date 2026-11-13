@@ -1,6 +1,6 @@
 // Admin overview: monthly attendance stats, current-duty timeline, and this week's board.
 const WEEK_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-const STATUS_TEXT = {normal:'正常', late:'迟到', absent:'旷班', pending:'待签到'};
+const STATUS_TEXT = {normal:'正常', late:'迟到', absent:'旷班', pending:'待签到', unconfirmed:'待确认'};
 let overviewData = null, overviewToken = 0, detailShiftId = null;
 // Anchor for the week board: any day inside the requested week, or null for this week.
 let overviewWeek = null;
@@ -38,7 +38,7 @@ function renderWeek(week, today) {
   const isCurrent = week.start === week.current;
   // The heading would be wrong while browsing another week.
   $('weekTitle').textContent = isCurrent ? '本周排班' : '周排班';
-  $('weekToday').hidden = isCurrent;
+  $('weekToday').disabled = isCurrent;
   // Deleting an empty week would be a no-op, so the button follows the shift count.
   $('weekClear').disabled = !week.shifts;
   $('weekClear').title = week.shifts
@@ -152,6 +152,8 @@ async function loadOverview() {
     // Track the week the server actually rendered; it is authoritative.
     overviewWeek = data.week.start === data.week.current ? null : data.week.start;
     renderOverview();
+    await loadAnomaly(anomalyWeeks);
+    if (token !== overviewToken) return;
     $('status').textContent = '';
   } catch (err) {
     if (token === overviewToken) $('status').textContent = err.message;
@@ -176,7 +178,7 @@ function clearVisibleWeek() {
     title: '确认删除整周排班',
     phrase,
     body: `将删除 ${week.start} 至 ${week.end} 的 ${week.shifts} 个班次、`
-      + `${week.people} 条排班人员记录；其中 ${week.checked} 条已签到会归档到出勤历史，`
+      + `${week.people} 条排班人员记录；已签到及已确认的考勤结果会归档到出勤历史，`
       + `仍可在统计中查到。每周固定排班表和账号不受影响。`,
     submit: () => api(`/api/admin/schedules/week?start=${encodeURIComponent(week.start)}`, 'DELETE'),
     onDone: async () => {
@@ -190,7 +192,6 @@ function renderOverview(changedIds = null) {
   if (!overviewData) return;
   const stats = overviewData.stats;
   $('attendanceRate').textContent = stats.rate === null ? '—' : `${stats.rate}%`;
-  $('attendanceDetail').textContent = `本月出勤率（正常 ${stats.normal} / 总出勤 ${stats.total}）`;
   $('lateCount').textContent = stats.late;
   $('absentCount').textContent = stats.absent;
   items = overviewData.timeline;
@@ -203,7 +204,6 @@ function renderOverview(changedIds = null) {
       if (card) card.replaceWith(overviewCard(shift));
     }
   }
-  loadAnomaly(anomalyWeeks);
 }
 
 // Sidebar visibility follows the same page ids checked by the API.
@@ -242,6 +242,7 @@ if (document.body.dataset.admin === 'true') initOverview();
 
 // 异常统计：近 2 周 / 近 4 周的迟到与旷班横向排行。
 let anomalyWeeks = 2;
+let anomalyToken = 0;
 
 function renderAnomalyChart(container, items, totalLabel) {
   container.replaceChildren();
@@ -265,18 +266,20 @@ function renderAnomalyChart(container, items, totalLabel) {
 }
 
 async function loadAnomaly(weeks = anomalyWeeks) {
+  const token = ++anomalyToken;
   anomalyWeeks = weeks;
   $('anomaly2').classList.toggle('active', weeks === 2);
   $('anomaly4').classList.toggle('active', weeks === 4);
   try {
     const data = await api('/api/admin/anomalies?weeks=' + weeks);
+    if (token !== anomalyToken) return;
     const lateTotal = renderAnomalyChart($('lateChart'), data.late);
     const absentTotal = renderAnomalyChart($('absentChart'), data.absent);
     $('lateTotal').textContent = `共 ${lateTotal} 次`;
     $('absentTotal').textContent = `共 ${absentTotal} 次`;
     $('anomalyRange').textContent = `统计范围：${data.start} 至 ${data.end}（近 ${data.weeks} 周）`;
   } catch (err) {
-    $('anomalyRange').textContent = err.message;
+    if (token === anomalyToken) $('anomalyRange').textContent = err.message;
   }
 }
 
@@ -321,6 +324,8 @@ window.refreshOverviewAttendance = async () => {
   overviewData = data;
   overviewWeek = data.week.start === data.week.current ? null : data.week.start;
   renderOverview(sameWeek ? changed : null);
+  await loadAnomaly(anomalyWeeks);
+  if (token !== overviewToken) return;
   if ($('status').textContent === '正在加载概览…') $('status').textContent = '';
   if ($('detailDialog').open && detailShiftId !== null) {
     const fresh = shifts.find(s => s.id === detailShiftId) || data.timeline.find(s => s.id === detailShiftId);

@@ -4,7 +4,7 @@ let expandedPermissionGroups = new Set();
 function renderPermissionGroups() {
   const list = $('permissionGroupList'); list.replaceChildren();
   for (const group of permissionGroups) {
-    const card = el('details', 'card permission-group');
+    const card = el('details', 'permission-group');
     card.dataset.groupId = group.id;
     card.open = expandedPermissionGroups.has(group.id);
     card.addEventListener('toggle', () => {

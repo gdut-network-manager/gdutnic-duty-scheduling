@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import asyncio
 from contextlib import suppress
 import os
@@ -11,20 +10,17 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from starlette.middleware.sessions import SessionMiddleware
 
-from server import attendance_live, checkin_access, session_policy, admin_store, chat_store, data_admin, db, duty_settings, field_duty, log_rotation, mailer, operation_log, overview, permissions, push_reports, root_admin, schedule_store, swap_store, system_clock, weekly_store, member_store, security
-from server.mcp_client import McpError, OutlineMcpClient, normalize_mcp_url
-from server.oauth import exchange_code, start_oauth
+from server import attendance_live, checkin_access, session_policy, admin_store, data_admin, db, duty_settings, field_duty, log_rotation, mailer, operation_log, overview, permissions, push_reports, table_rotation, root_admin, schedule_store, swap_store, system_clock, weekly_store, member_store, security
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
 DATA = ROOT / "data"
 ICON = ROOT / "icon"
-DEFAULT_MCP = ""
 
 
 def _session_secret() -> str:
@@ -40,19 +36,17 @@ def _session_secret() -> str:
     return secret
 
 
-def _qq_bot():
-    """Load the optional QQ bridge lazily: it pulls in asyncio helpers we otherwise skip."""
-    from server import qq_bot
-    return qq_bot
-
-
-def _chat_helpers():
-    from server import chat
-    return chat
+async def _attendance_status_worker():
+    while True:
+        try:
+            schedule_store.finalize_absences()
+        except Exception as exc:
+            print(f'[attendance] 状态确认暂时失败：{type(exc).__name__}')
+        await asyncio.sleep(30)
 
 
 async def _log_rotation_worker():
-    """Keep data/logs and the operation log within their size cap.
+    """Keep data/logs, the operation log and the capped record tables within their size cap.
 
     Checking file sizes is cheap, but there is no reason to do it on every request, so
     it runs every five minutes alongside the other background workers.
@@ -61,6 +55,7 @@ async def _log_rotation_worker():
         try:
             log_rotation.prune()
             operation_log.prune()
+            table_rotation.prune()
         except Exception as exc:
             print(f'[log] 日志滚动暂时失败：{type(exc).__name__}')
         await asyncio.sleep(300)
@@ -88,20 +83,17 @@ async def lifespan(_app: FastAPI):
     if not admin_store.has_user():
         print("尚未注册管理员，首次打开站点会跳转到该地址并创建账号。")
     print("")
-    if admin_store.qq_config().get('enabled'):
-        await _qq_bot().sync()
     push_task = asyncio.create_task(push_reports.worker())
     presence_task = asyncio.create_task(session_policy.presence_worker())
     log_task = asyncio.create_task(_log_rotation_worker())
+    attendance_task = asyncio.create_task(_attendance_status_worker())
     try:
         yield
     finally:
-        for task in (push_task, presence_task, log_task):
+        for task in (push_task, presence_task, log_task, attendance_task):
             task.cancel()
             with suppress(asyncio.CancelledError):
                 await task
-    if admin_store.qq_config().get('enabled'):
-        await _qq_bot().stop()
 
 
 class NoCacheStatic(StaticFiles):
@@ -159,7 +151,6 @@ async def security_headers(request: Request, call_next):
     return response
 
 
-VISITOR_COOKIE = "gdutnic_visitor"
 ADMIN_COOKIE = "gdutnic_admin"
 
 
@@ -199,27 +190,6 @@ def _admin_from_cookie(request: Request) -> str:
         request.state.admin_session_version = data["v"]
         return name
     return ""
-
-
-def _visitor_id(request: Request) -> str:
-    value = (request.cookies.get(VISITOR_COOKIE) or "").strip()
-    if len(value) >= 16:
-        return value
-    return secrets.token_urlsafe(18)
-
-
-def _with_visitor_cookie(request: Request, payload: dict[str, Any], visitor: str) -> JSONResponse:
-    response = JSONResponse(payload)
-    if request.cookies.get(VISITOR_COOKIE) != visitor:
-        response.set_cookie(
-            VISITOR_COOKIE,
-            visitor,
-            max_age=60 * 60 * 24 * 400,
-            httponly=True,
-            samesite="lax",
-            path="/",
-        )
-    return response
 
 
 app.mount("/static", NoCacheStatic(directory=WEB), name="static")
@@ -264,326 +234,6 @@ async def readyz():
     except Exception:
         return JSONResponse({"status": "unready"}, status_code=503)
     return {"status": "ready"}
-
-
-def _resolve_mcp_url(request: Request, body: dict[str, Any] | None = None) -> str:
-    # Only the administrator-controlled destination is trusted. Old signed
-    # sessions may contain URLs originally supplied by anonymous clients.
-    return admin_store.mcp_url()
-
-
-def _require_mcp_user(request: Request) -> None:
-    if not _admin_ok(request):
-        _require_member(request)
-
-
-@app.get("/api/defaults")
-async def defaults(request: Request) -> dict[str, Any]:
-    session = request.session
-    return {
-        "mcp_url": admin_store.mcp_url() or "",
-        "has_outline_token": bool(session.get("outline_token") or session.get("mcp_api_key")),
-        "oauth_connected": bool(session.get("outline_token")),
-    }
-
-
-@app.post("/api/settings")
-async def save_settings(request: Request) -> dict[str, Any]:
-    _require_mcp_user(request)
-    body = await request.json()
-    raw = _resolve_mcp_url(request)
-    if raw:
-        request.session["mcp_url"] = normalize_mcp_url(raw)
-    api_key = (body.get("mcp_api_key") or "").strip()
-    if api_key:
-        request.session["mcp_api_key"] = api_key
-    if body.get("clear_mcp_api_key"):
-        request.session.pop("mcp_api_key", None)
-    return {"ok": True, "mcp_url": request.session.get("mcp_url", "")}
-
-
-@app.post("/api/mcp/connect")
-async def mcp_connect(request: Request) -> dict[str, Any]:
-    _require_mcp_user(request)
-    body = await request.json()
-    raw = _resolve_mcp_url(request, body)
-    if not raw:
-        raise HTTPException(status_code=400, detail="请先在管理员界面填写网协 MCP 地址")
-    mcp_url = normalize_mcp_url(raw)
-    request.session["mcp_url"] = mcp_url
-    token = _token_from(request, body)
-    if not token:
-        raise HTTPException(status_code=401, detail="尚未登录：请点击「企业登录」在弹窗中输入账号密码")
-    try:
-        async with OutlineMcpClient(mcp_url, token) as mcp:
-            tools = await mcp.list_tools()
-            return {
-                "ok": True,
-                "mcp_url": mcp.mcp_url,
-                "server": mcp.server_info.get("serverInfo") or mcp.server_info,
-                "tools": [
-                    {"name": t.get("name"), "description": t.get("description") or ""}
-                    for t in tools
-                ],
-            }
-    except McpError as exc:
-        print(f"[mcp_connect] {exc} payload={exc.payload!r}")
-        status = 401 if exc.status == 401 else 502
-        raise HTTPException(status_code=status, detail="MCP 连接失败，请检查配置或重新登录") from exc
-    except Exception as exc:
-        print(f"[mcp_connect] {type(exc).__name__}: {exc}")
-        raise HTTPException(status_code=502, detail="MCP 连接失败，请检查配置或重新登录") from exc
-
-
-@app.get("/api/mcp/oauth/start")
-async def oauth_start(request: Request, mcp_url: str | None = None):
-    _require_mcp_user(request)
-    raw = _resolve_mcp_url(request)
-    if not raw:
-        return _oauth_popup_result("missing_url")
-    mcp_url = normalize_mcp_url(raw)
-    # Behind an Ingress or reverse proxy request.base_url may be http:// plus an
-    # internal host. PUBLIC_BASE_URL keeps the registered OAuth callback stable.
-    base = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/") or str(request.base_url).rstrip("/")
-    redirect_uri = base + str(request.url_for("oauth_callback").path)
-    try:
-        flow = await start_oauth(mcp_url, redirect_uri)
-    except Exception as exc:
-        print(f"[oauth_start] {type(exc).__name__}: {exc}")
-        return _oauth_popup_result("start", "企业登录暂时不可用")
-    flow["redirect_uri"] = redirect_uri
-    request.session["oauth_flow"] = flow
-    request.session["mcp_url"] = mcp_url
-    return RedirectResponse(flow["authorize_url"], status_code=302)
-
-
-@app.get("/api/mcp/oauth/callback")
-async def oauth_callback(request: Request, code: str | None = None, state: str | None = None) -> HTMLResponse:
-    _require_mcp_user(request)
-    flow = request.session.get("oauth_flow") or {}
-    if not code or not flow:
-        return _oauth_popup_result("missing")
-    if state != flow.get("state"):
-        return _oauth_popup_result("state")
-    try:
-        tokens = await exchange_code(
-            token_endpoint=flow["token_endpoint"],
-            client_id=flow["client_id"],
-            client_secret=flow.get("client_secret") or "",
-            code=code,
-            redirect_uri=flow.get("redirect_uri") or str(request.url_for("oauth_callback")),
-            code_verifier=flow["code_verifier"],
-            mcp_url=flow["mcp_url"],
-        )
-    except Exception as exc:
-        return _oauth_popup_result("token", "企业登录暂时不可用")
-    request.session["outline_token"] = (
-        tokens.get("access_token")
-        or (tokens.get("data") or {}).get("access_token")
-        or ""
-    )
-    request.session["outline_refresh"] = tokens.get("refresh_token")
-    request.session["oauth_meta"] = {
-        "token_endpoint": flow["token_endpoint"],
-        "client_id": flow["client_id"],
-        "client_secret": flow.get("client_secret") or "",
-        "mcp_url": flow["mcp_url"],
-    }
-    request.session.pop("oauth_flow", None)
-    if _admin_ok(request) and request.session.get("outline_token"):
-        admin_store.save_oauth(
-            request.session.get("outline_token") or "",
-            request.session.get("outline_refresh") or "",
-            request.session.get("oauth_meta") or {},
-        )
-    return _oauth_popup_result(
-        "ok",
-        extra={
-            "access_token": request.session.get("outline_token") or "",
-            "refresh_token": request.session.get("outline_refresh") or "",
-            "mcp_url": flow.get("mcp_url") or "",
-        },
-    )
-
-
-@app.post("/api/mcp/restore")
-async def mcp_restore(request: Request) -> dict[str, bool]:
-    _require_mcp_user(request)
-    body = await request.json()
-    token = (body.get("outline_token") or "").strip()
-    if not token:
-        raise HTTPException(status_code=400, detail="缺少登录凭证")
-    request.session["outline_token"] = token
-    refresh = (body.get("outline_refresh") or "").strip()
-    if refresh:
-        request.session["outline_refresh"] = refresh
-    raw = _resolve_mcp_url(request)
-    if raw:
-        request.session["mcp_url"] = normalize_mcp_url(raw)
-    return {"ok": True}
-
-
-@app.post("/api/mcp/logout")
-async def mcp_logout(request: Request) -> dict[str, bool]:
-    for key in ("outline_token", "outline_refresh", "oauth_meta", "mcp_api_key", "oauth_flow"):
-        request.session.pop(key, None)
-    return {"ok": True}
-
-
-@app.post("/api/chat")
-async def chat(request: Request) -> StreamingResponse:
-    _require_mcp_user(request)
-    body = await request.json()
-    raw = _resolve_mcp_url(request, body)
-    if not raw:
-        raise HTTPException(status_code=400, detail="请先在管理员界面填写网协 MCP 地址")
-    mcp_url = normalize_mcp_url(raw)
-    request.session["mcp_url"] = mcp_url
-    token = _token_from(request, body)
-    if not token:
-        return JSONResponse({"error": "尚未连接 Outline MCP，请先在弹窗中完成企业登录"}, status_code=401)
-
-    openai_base, openai_key, model, provider = admin_store.chat_credentials()
-    messages = []
-    for item in body.get("messages") or []:
-        if not isinstance(item, dict):
-            continue
-        role = str(item.get("role") or "")
-        if role not in {"user", "assistant"}:
-            continue
-        content = chat_store._trim_content(item.get("content"))
-        if content in ("", []):
-            continue
-        messages.append({"role": role, "content": content})
-    if not openai_base or not openai_key or not model:
-        raise HTTPException(status_code=400, detail="尚未配置模型接口，请先打开管理员界面完成设置")
-    if not messages:
-        raise HTTPException(status_code=400, detail="消息不能为空")
-
-    async def events():
-        try:
-            async with OutlineMcpClient(mcp_url, token) as mcp:
-                tools = await mcp.list_tools() if admin_store.mcp_heat() > 0 else []
-                yield _sse({"type": "mcp_ready", "tools": [t.get("name") for t in tools]})
-                async for event in _chat_helpers().stream_chat(
-                    openai_base=openai_base,
-                    openai_key=openai_key,
-                    model=model,
-                    messages=messages,
-                    mcp=mcp,
-                    tools=tools,
-                    provider=provider,
-                    system_prompt=admin_store.system_prompt(),
-                    mcp_heat=admin_store.mcp_heat(),
-                ):
-                    yield _sse(event)
-        except McpError as exc:
-            yield _sse({"type": "error", "message": "服务请求失败，请稍后重试"})
-        except Exception as exc:
-            yield _sse({"type": "error", "message": "服务请求失败，请稍后重试"})
-
-    return StreamingResponse(events(), media_type="text/event-stream")
-
-
-@app.post("/api/chat/title")
-async def chat_title(request: Request) -> dict[str, str]:
-    _require_mcp_user(request)
-    body = await _bounded_json(request, 256 * 1024)
-    openai_base, openai_key, model, provider = admin_store.chat_credentials()
-    if not openai_base or not openai_key or not model:
-        raise HTTPException(status_code=400, detail="尚未配置模型接口")
-    messages = []
-    for item in body.get("messages") or []:
-        if not isinstance(item, dict):
-            continue
-        role = str(item.get("role") or "")
-        if role not in {"user", "assistant"}:
-            continue
-        content = chat_store._trim_content(item.get("content"))
-        if isinstance(content, list):
-            texts = [
-                part
-                for part in content
-                if isinstance(part, dict) and part.get("type") == "text" and str(part.get("text") or "").strip()
-            ]
-            content = texts
-        if role != "assistant":
-            continue
-        if content in ("", []):
-            continue
-        messages.append({"role": "assistant", "content": content})
-        if len(messages) >= 2:
-            break
-    if not messages:
-        raise HTTPException(status_code=400, detail="消息不能为空")
-    try:
-        title = await _chat_helpers().summarize_title(
-            openai_base=openai_base,
-            openai_key=openai_key,
-            model=model,
-            messages=messages,
-            provider=provider,
-        )
-    except Exception:
-        title = ""
-    return {"title": title}
-
-
-def _token_from(request: Request, body: dict[str, Any]) -> str:
-    from_body = (body.get("mcp_api_key") or "").strip()
-    if from_body:
-        request.session["mcp_api_key"] = from_body
-        return from_body
-    return (
-        request.session.get("mcp_api_key")
-        or request.session.get("outline_token")
-        or ""
-    ).strip()
-
-
-def _sse(payload: dict[str, Any]) -> str:
-    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-
-
-def _oauth_popup_result(status: str, message: str = "", extra: dict[str, Any] | None = None) -> HTMLResponse:
-    payload = json.dumps(
-        {"type": "outline-oauth", "status": status, "message": message, **(extra or {})},
-        ensure_ascii=False,
-    )
-    ok = status == "ok"
-    detail = message or ("登录成功，正在关闭窗口…" if ok else "登录未完成，请关闭此窗口后重试。")
-    auto_close = "window.close();" if ok else ""
-    html = f"""<!DOCTYPE html>
-<html lang="zh-CN">
-  <head><meta charset="utf-8"><title>知识库登录</title></head>
-  <body style="font-family:sans-serif;padding:24px;max-width:420px">
-    <p>{detail}</p>
-    <script>
-      const payload = {payload};
-      try {{
-        if (payload.status === "ok" && payload.access_token) {{
-          localStorage.setItem("gdutnic-wiki-auth", JSON.stringify({{
-            access_token: payload.access_token,
-            refresh_token: payload.refresh_token || "",
-            mcp_url: payload.mcp_url || ""
-          }}));
-        }}
-      }} catch (e) {{}}
-      try {{
-        if (window.opener) {{
-          window.opener.postMessage(payload, window.location.origin);
-        }}
-      }} catch (e) {{}}
-      {auto_close}
-      setTimeout(function () {{
-        if (!window.closed && payload.status === "ok") {{
-          location.replace("/?oauth=" + encodeURIComponent(payload.status));
-        }}
-      }}, 400);
-    </script>
-  </body>
-</html>"""
-    return HTMLResponse(html)
 
 
 def _admin_gate(request: Request) -> bool:
@@ -638,13 +288,7 @@ def _require_permission(request: Request, permission: str) -> str:
     name = _session_account(request)
     if not name:
         raise HTTPException(status_code=401, detail="请先登录管理员")
-    # Legacy model/MCP settings routes retain their original authorization even
-    # though the settings sidebar now also contains SSO and network controls. The
-    # credentials they expose are masked on read, so opening the page with one card
-    # cannot reveal another card's secrets.
-    allowed = (any(permissions.has(name, key) for key in ('rules', 'clock', 'smtp'))
-               if permission == 'settings' else permissions.has(name, permission))
-    if not allowed:
+    if not permissions.has(name, permission):
         raise HTTPException(status_code=403, detail="当前账号没有此权限")
     return name
 
@@ -657,8 +301,11 @@ def _reject_root(name: str) -> None:
 
 def _require_default_account_grant(actor: str) -> None:
     # A customized default group must not provide a back door around group assignment.
-    default = next(group for group in permissions.list_groups() if group['default'])
-    if set(default['permissions']) & permissions.ADMIN_PERMISSIONS and not permissions.has(actor, 'permission_groups'):
+    with db.read() as conn:
+        default = conn.execute('SELECT permissions FROM permission_groups WHERE id=?',
+                               (permissions.DEFAULT_GROUP,)).fetchone()
+    granted = permissions.decode(default['permissions']) if default else set(permissions.DEFAULT_PERMISSIONS)
+    if granted & permissions.ADMIN_PERMISSIONS and not permissions.has(actor, 'permission_groups'):
         raise HTTPException(403, "默认权限组包含管理权限，创建账号需要权限组管理权限")
 
 
@@ -789,7 +436,9 @@ async def admin_login(request: Request) -> JSONResponse:
 
 @app.post("/api/admin/logout")
 async def admin_logout(request: Request) -> JSONResponse:
-    _log(_admin_username(request), '退出管理端')
+    actor = _session_account(request)
+    if actor:
+        _log(actor, '退出管理端')
     session_policy.revoke(getattr(request.state, 'admin_session_id', None))
     session_policy.revoke(request.session.pop('admin_sid', None))
     request.session.pop("admin_ok", None)
@@ -846,60 +495,6 @@ async def admin_delete_user(request: Request) -> dict[str, Any]:
     return {"ok": True, "usernames": admin_store.usernames()}
 
 
-@app.get("/api/admin/model")
-async def admin_model_get(request: Request) -> dict[str, Any]:
-    _require_permission(request, "settings")
-    return admin_store.model_public()
-
-
-@app.post("/api/admin/model")
-async def admin_model_save(request: Request) -> dict[str, Any]:
-    _require_permission(request, "settings")
-    body = await request.json()
-    return admin_store.save_model(body)
-
-
-@app.get("/api/admin/mcp")
-async def admin_mcp_get(request: Request) -> dict[str, Any]:
-    _require_permission(request, "settings")
-    return admin_store.mcp_public()
-
-
-@app.post("/api/admin/mcp")
-async def admin_mcp_save(request: Request) -> dict[str, Any]:
-    _require_permission(request, "settings")
-    body = await request.json()
-    return admin_store.save_mcp(body)
-
-
-@app.post("/api/admin/oauth")
-async def admin_oauth_persist(request: Request) -> dict[str, Any]:
-    _require_permission(request, "settings")
-    token = str(request.session.get("outline_token") or "").strip()
-    refresh = str(request.session.get("outline_refresh") or "").strip()
-    meta = request.session.get("oauth_meta") if isinstance(request.session.get("oauth_meta"), dict) else {}
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    if isinstance(body, dict):
-        token = str(body.get("access_token") or token).strip()
-        refresh = str(body.get("refresh_token") or refresh).strip()
-    if not token:
-        raise HTTPException(status_code=400, detail="尚未完成知识库登录")
-    if token:
-        request.session["outline_token"] = token
-    if refresh:
-        request.session["outline_refresh"] = refresh
-    return admin_store.save_oauth(token, refresh, meta)
-
-
-@app.post("/api/admin/oauth/logout")
-async def admin_oauth_logout(request: Request) -> dict[str, Any]:
-    _require_permission(request, "settings")
-    return admin_store.clear_oauth()
-
-
 @app.get("/api/admin/smtp")
 async def admin_smtp_get(request: Request) -> dict[str, Any]:
     _require_permission(request, "smtp")
@@ -937,102 +532,6 @@ async def admin_smtp_test(request: Request) -> dict[str, Any]:
     return result
 
 
-@app.get("/api/admin/qq")
-async def admin_qq_get(request: Request) -> dict[str, Any]:
-    _require_permission(request, "settings")
-    return _qq_bot().public_status()
-
-
-@app.post("/api/admin/qq")
-async def admin_qq_save(request: Request) -> dict[str, Any]:
-    _require_permission(request, "settings")
-    body = await request.json()
-    admin_store.save_qq(body)
-    return await _qq_bot().sync()
-
-
-async def _bounded_json(request: Request, limit: int):
-    # Count streamed bytes as well as Content-Length; chunked bodies cannot bypass the cap.
-    try:
-        declared = int(request.headers.get("content-length", "0"))
-    except ValueError as exc:
-        raise HTTPException(400, "Content-Length 格式错误") from exc
-    if declared < 0:
-        raise HTTPException(400, "Content-Length 格式错误")
-    if declared > limit:
-        raise HTTPException(413, "请求内容过大")
-    chunks = bytearray()
-    async for chunk in request.stream():
-        if len(chunks) + len(chunk) > limit:
-            raise HTTPException(413, "请求内容过大")
-        chunks.extend(chunk)
-    try:
-        body = json.loads(chunks)
-    except (ValueError, UnicodeError) as exc:
-        raise HTTPException(400, "JSON 格式错误") from exc
-    if not isinstance(body, dict):
-        raise HTTPException(400, "请求格式错误")
-    return body
-
-
-def _chat_owner(request: Request) -> str:
-    # Never use the caller-controlled legacy visitor cookie to authorize storage.
-    name = _session_account(request) or _require_member(request)
-    with db.read() as conn:
-        identity = keycloak.account_key(conn, name)
-    if not identity:
-        with db.write() as conn:
-            identity = keycloak.account_key(conn, name, create=True)
-    if not identity:
-        raise HTTPException(401, "账号已失效，请重新登录")
-    return "account:" + identity
-
-
-@app.get("/api/chats")
-async def chats_get(request: Request) -> JSONResponse:
-    owner = _chat_owner(request)
-    return JSONResponse(chat_store.load_visitor_chats(owner), headers={"Cache-Control": "no-store"})
-
-
-@app.put("/api/chats")
-async def chats_put(request: Request) -> JSONResponse:
-    owner = _chat_owner(request)
-    body = await _bounded_json(request, 8 * 1024 * 1024)
-    sessions = body.get("sessions") if isinstance(body.get("sessions"), list) else []
-    try:
-        chat_store.save_visitor_chats(owner, sessions, str(body.get("currentId") or ""))
-    except chat_store.ChatQuotaExceeded as exc:
-        raise HTTPException(413, "会话存储空间不足，请删除自己的旧会话或联系管理员") from exc
-    return JSONResponse({"ok": True})
-
-
-@app.get("/api/admin/chats")
-async def admin_chats_list(request: Request) -> dict[str, Any]:
-    _require_permission(request, "data")
-    return {"items": chat_store.list_all(), **chat_store.stats()}
-
-
-@app.post("/api/admin/chats/cache")
-async def admin_chats_cache(request: Request) -> dict[str, Any]:
-    _require_permission(request, "data")
-    body = await request.json()
-    try:
-        max_mb = int(body.get("max_mb"))
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="请填写有效的缓存大小") from None
-    stats = chat_store.set_max_mb(max_mb)
-    return {"ok": True, "items": chat_store.list_all(), **stats}
-
-
-@app.get("/api/admin/chats/{visitor_id}/{chat_id}")
-async def admin_chats_detail(request: Request, visitor_id: str, chat_id: str) -> dict[str, Any]:
-    _require_permission(request, "data")
-    rec = chat_store.get_session(visitor_id, chat_id)
-    if not rec:
-        raise HTTPException(status_code=404, detail="对话不存在")
-    return rec
-
-
 def _schedule_error(exc):
     if isinstance(exc, LookupError):
         return HTTPException(status_code=404, detail=str(exc))
@@ -1040,10 +539,14 @@ def _schedule_error(exc):
 
 
 @app.get("/api/admin/logs")
-async def admin_logs(request: Request, limit: int = 300, actor: str = "", q: str = ""):
+async def admin_logs(request: Request, limit: int = 100, actor: str = "", q: str = "", offset: int = 0):
     _require_permission(request, "logs")
-    limit = max(1, min(int(limit or 300), 1000))
-    return {"items": operation_log.list_entries(limit, actor.strip(), q.strip()),
+    limit = max(1, min(int(limit or 100), 100))
+    offset = max(0, offset)
+    items = operation_log.list_entries(limit, actor.strip(), q.strip(), offset)
+    total = operation_log.count_entries(actor.strip(), q.strip())
+    has_more = offset + limit < total
+    return {"items": items, "has_more": has_more, "total": total,
             "actors": operation_log.actors(),
             "stats": operation_log.stats()}
 
@@ -1349,14 +852,15 @@ async def weekly_get(request: Request):
 
 @app.put("/api/admin/weekly-roster")
 async def weekly_save(request: Request):
-    _require_permission(request, "weekly")
+    actor = _require_permission(request, "weekly")
     try:
         roster = weekly_store.save(await request.json())
         _log(_admin_username(request), '保存每周排班模板',
              f"{len(roster.get('slots') or [])} 个班次")
         # Only after the reviewed roster is stored do we create missing duty accounts.
         created = member_store.create_missing(
-            {name for slot in roster['slots'] for names in slot['days'] for name in names})
+            {name for slot in roster['slots'] for names in slot['days'] for name in names},
+            authorize=lambda: _require_default_account_grant(actor))
         return {**roster, "members_created": created['created']}
     except (ValueError, TypeError) as exc:
         raise _schedule_error(exc) from exc
@@ -1942,10 +1446,13 @@ app.include_router(keycloak.router)
 
 @app.get("/api/admin/about")
 async def admin_about(request: Request):
-    if not _session_account(request):
+    name = _session_account(request)
+    if not name:
         raise HTTPException(status_code=401, detail="请先登录管理员")
-    from server.app_version import current_version
-    return {"version": current_version(ROOT)}
+    from server import wiki
+    from server.app_version import VERSION
+    guide = wiki.for_account(permissions.permissions_of(name), root_admin.is_root(name))
+    return {"version": VERSION, "guide": guide}
 
 
 @app.get("/{slug}")

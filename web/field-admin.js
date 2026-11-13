@@ -10,7 +10,7 @@ function fieldCard(item, month) {
   card.append(el('span', '', item.registered
     ? new Date(item.registered_at).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'})
     : '未参加外勤'));
-  if (item.manual) card.append(el('span', 'manual-flag', '管理员修改'));
+  card.append(el('span', 'manual-flag', item.manual ? '管理员修改' : ''));
   card.title = '点击更改外勤参与状态';
   card.onclick = () => editParticipation(item, month);
   return card;
