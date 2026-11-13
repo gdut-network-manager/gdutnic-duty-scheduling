@@ -452,48 +452,6 @@ helm upgrade --install duty-scheduling ./helm \
 
 历史问题的复现与修复记录见 [安全验证记录](docs/security-validation-2026-11-09.md)，性能相关的改动记录见 [内存与运行速度优化](docs/performance.md)。
 
-## 版本与 Git 使用
-
-- 远端：`origin` → `https://github.com/AndyZhang32767/gdutnic-duty-scheduling.git`
-- 分支：`master` 为已发布的稳定版本；`dev` 为当前开发分支，新功能先进入 `dev`，验证后再合并到 `master`。仓库里另有一个早期快照分支 `v0.1`，仅作留档。截图、日志、`data/` 等运行时产物都不提交；`test/`、`tests/` 和本地 `container/` 目录也不提交。
-- 更新本地代码前先停止正在运行的应用，避免启动脚本升级数据库时与运行中的进程冲突：
-
-```bash
-git switch dev
-git pull --ff-only
-bash start.sh          # Windows 用 start.bat
-```
-
-- 检查当前状态与差异：
-
-```bash
-git status
-git diff                            # 未暂存的改动
-git log --oneline --graph -10       # 最近提交
-git log origin/master..dev --stat   # dev 相对 master 多了哪些改动
-```
-
-- 提交与推送：
-
-```bash
-git add -A
-git commit -m "简短说明改动内容"
-git push                            # dev 已跟踪 origin/dev
-```
-
-- 把 `dev` 的改动发布到 `master`：
-
-```bash
-git switch master
-git pull --ff-only
-git merge --no-ff dev
-git push origin master
-```
-
-- 提交信息沿用现有风格：一行祈使句标题（中文或英文均可），需要时在正文按模块列出关键改动与影响，并注明测试结果。
-- `.gitignore` 已排除 `data/`、`.env`、数据库与 SQL 导出、私钥与证书、人员表格、日志、`test/`、`tests/`、`container/`、`output/` 以及 `.playwright-cli/`。若 `git status` 里出现这些路径，说明规则失效，应先修正再提交。
-- 部署机只需要源代码：拉到新版本后按「一行部署」或「启动」重新执行启动脚本即可，脚本会自动补齐新增表与字段，不会清空已有数据库。
-
 ## 开源协议
 
 本项目采用 [MIT License](LICENSE)。
