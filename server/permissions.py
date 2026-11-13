@@ -41,7 +41,7 @@ MEMBER_PERMISSIONS = ('duty', 'schedule_list', 'member_field', 'field_confirm')
 ADMIN_PERMISSIONS = frozenset(PERMISSIONS) - set(MEMBER_PERMISSIONS)
 TREE = [
     {'id': 'member_area', 'label': '成员端', 'hint': '成员页面的侧栏入口', 'children': [
-        {'id': 'member_overview_group', 'label': '概览', 'hint': '概览始终展示；分别控制打卡和外勤操作', 'children': [
+        {'id': 'member_overview_group', 'label': '概览', 'hint': '开放打卡或外勤任一项即展示概览；两项都关闭时隐藏，登录后打开侧栏中的第一个页面', 'children': [
             {'id': key, 'label': PERMISSIONS[key][0], 'hint': PERMISSIONS[key][1]}
             for key in ('duty', 'member_field')]},
         *[{'id': key, 'label': PERMISSIONS[key][0], 'hint': PERMISSIONS[key][1]}
@@ -163,14 +163,14 @@ def _derive(values):
     return result
 
 
-def permissions_of(name):
+def permissions_of(name, *, include_inactive=False):
     if root_admin.is_root(name):
         return set(ALL_PERMISSIONS)
     with db.read() as conn:
         row = conn.execute('SELECT m.active,m.group_id,m.permissions AS legacy,g.permissions '
                            'FROM member_accounts m LEFT JOIN permission_groups g ON g.id=m.group_id '
                            'WHERE m.username=?', (name,)).fetchone()
-    if not row or not row['active']:
+    if not row or (not row['active'] and not include_inactive):
         return set()
     if row['group_id']:
         return _derive(decode(row['permissions']))  # Missing groups fail closed.
@@ -183,8 +183,8 @@ def has(name, permission):
     return bool(held & set(LEGACY[permission])) if permission in LEGACY else permission in held
 
 
-def is_admin(name):
-    return bool(permissions_of(name) & ADMIN_PERMISSIONS)
+def is_admin(name, *, include_inactive=False):
+    return bool(permissions_of(name, include_inactive=include_inactive) & ADMIN_PERMISSIONS)
 
 
 def can_admin(name):

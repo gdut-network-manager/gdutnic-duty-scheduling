@@ -1,11 +1,11 @@
 """Login throttling and response hardening shared by the login endpoints."""
 from __future__ import annotations
 
-import os
 import threading
+import os
+import ipaddress
 import time
 from collections import OrderedDict
-from ipaddress import ip_address
 
 # Cookie envelopes last four hours; server-side idle leases enforce inactivity limits.
 SESSION_TTL = 4 * 60 * 60
@@ -72,27 +72,29 @@ class AttemptLimiter:
             self._blocked_until.pop(key, None)
 
 
-def client_ip(request) -> str:
-    """Resolve the caller's address for throttling and source-network rules.
-
-    The socket peer is authoritative unless the deployment explicitly names a header
-    written by its outermost reverse proxy (CLIENT_IP_HEADER, for example
-    X-Real-Client-IP). Only a single valid IP is accepted from that header; anything
-    else falls back to the peer so a malformed or spoofed value cannot become a key.
-    """
-    header = os.environ.get("CLIENT_IP_HEADER", "").strip()
-    if header:
-        value = request.headers.get(header, "").strip()
-        try:
-            return str(ip_address(value))
-        except ValueError:
-            pass
-    return request.client.host if request.client else "unknown"
-
-
 def client_key(request) -> str:
-    """Login throttling key: the resolved client address."""
-    return client_ip(request)
+    """Use the socket peer for check-in unless a trusted proxy header is configured."""
+    return _proxy_client_key(request, os.environ.get("CLIENT_IP_HEADER", "").strip())
+
+
+def login_client_key(request) -> str:
+    """Resolve the login source through a trusted proxy, defaulting to X-Real-IP."""
+    return _proxy_client_key(request, os.environ.get("CLIENT_IP_HEADER", "").strip() or "X-Real-IP")
+
+
+def _proxy_client_key(request, header: str) -> str:
+    peer = request.client.host if request.client else "unknown"
+    if not header:
+        return peer
+    try:
+        address = ipaddress.ip_address(peer)
+        networks = [ipaddress.ip_network(value.strip(), strict=False)
+                    for value in os.environ.get("LOGIN_TRUSTED_PROXIES", "").split(",") if value.strip()]
+        if any(address in network for network in networks):
+            return str(ipaddress.ip_address(request.headers.get(header, "").strip()))
+    except ValueError:
+        pass
+    return peer
 
 
 class IdentityCache:

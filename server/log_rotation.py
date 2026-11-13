@@ -1,6 +1,6 @@
 """Size-capped log files under data/logs/.
 
-Runtime logs (the application's request log and the QQ bridge's files) would otherwise
+Runtime logs (such as the application's request log) would otherwise
 grow without bound on a long-running deployment. Every file in the log directory is
 checked and, once it passes LIMIT_BYTES, trimmed down to KEEP_BYTES by dropping the
 oldest complete lines. Trimming runs from the application loop, so it costs nothing on

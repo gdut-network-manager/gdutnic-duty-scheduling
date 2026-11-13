@@ -114,7 +114,7 @@ mysql:
 # Name of the header written by the outermost reverse proxy. Empty means the
 # socket peer is used and no header is trusted.
 clientIpHeader: ""
-# Public URL used for the MCP OAuth callback, for example https://duty.example.com
+# Public URL used for the admin page in startup logs, for example https://duty.example.com
 publicBaseUrl: ""
 # Set to "1" once the site is served over HTTPS only. Empty means unset, so the
 # application default (plain HTTP allowed) applies and envFromSecrets can supply it.

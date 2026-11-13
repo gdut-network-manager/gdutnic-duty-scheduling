@@ -2,8 +2,8 @@
 let weeklyLoaded = false;
 const weekdays = ['周一','周二','周三','周四','周五','周六','周日'];
 function showPage(page) {
-  const pages = {daily:'dailyPage', weekly:'weeklyPage', special:'specialPage', swap:'swapPage', members:'membersPage', field:'fieldPage', settings:'settingsPage', logs:'logsPage', data:'dataPage', permissionGroups:'permissionGroupsPage', push:'pushPage'};
-  const tabs = {daily:'dailyTab', weekly:'weeklyTab', special:'specialTab', swap:'swapTab', members:'membersTab', field:'fieldTab', settings:'settingsTab', logs:'logsTab', data:'dataTab', permissionGroups:'permissionGroupsTab', push:'pushTab'};
+  const pages = {daily:'dailyPage', weekly:'weeklyPage', special:'specialPage', swap:'swapPage', members:'membersPage', field:'fieldPage', settings:'settingsPage', logs:'logsPage', data:'dataPage', permissionGroups:'permissionGroupsPage', push:'pushPage', about:'aboutPage'};
+  const tabs = {daily:'dailyTab', weekly:'weeklyTab', special:'specialTab', swap:'swapTab', members:'membersTab', field:'fieldTab', settings:'settingsTab', logs:'logsTab', data:'dataTab', permissionGroups:'permissionGroupsTab', push:'pushTab', about:'aboutTab'};
   for (const [key, id] of Object.entries(pages)) { $(id).hidden = key !== page; }
   for (const [key, id] of Object.entries(tabs)) { $(id).classList.toggle('active', key === page); }
 }
@@ -85,7 +85,7 @@ $('clearForm').onsubmit = async e => {
     const result = await api('/api/admin/schedules', 'DELETE');
     $('clearDialog').close();
     await load();
-    $('weeklyStatus').textContent = `已清除 ${result.deleted} 个班次，其中 ${result.archived} 条打卡记录已归档保留，可继续查询出勤历史。`;
+    $('weeklyStatus').textContent = `已清除 ${result.deleted} 个班次，其中 ${result.archived} 条考勤记录已归档保留，可继续查询出勤历史。`;
   } catch (err) { $('clearStatus').textContent = err.message; }
   finally { submit.disabled = false; }
 };

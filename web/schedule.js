@@ -84,7 +84,7 @@ function render(changedIds = null) {
     const members=el('div','members');
     for(const m of s.members){
       // Checked members always read "已签到"; only the colour reflects late/absent.
-      const label = m.checked_at ? '已签到' : m.status==='absent' ? '旷班' : '待签到';
+      const label = m.status === 'unconfirmed' ? '已签到（待确认）' : m.checked_at ? '已签到' : m.status==='absent' ? '旷班' : '待签到';
       const tone = m.status ? ' '+m.status : '';
       const n=el('span','member'+tone+(m.checked_at?' checked':''),m.name+' · '+label);
       if(m.checked_at)n.title=new Date(m.checked_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'});
@@ -103,12 +103,14 @@ function render(changedIds = null) {
           button.classList.add('is-submitting');
           button.disabled = true;
           try {
+            await playRegistrationAnimation(button);
             await api(`/api/schedules/${s.id}/check-in`,'POST');
             button.classList.add('registered');
             label.textContent = '已签到';
             $('status').textContent = '';
             setTimeout(() => load(), 900);
           } catch (err) {
+            button.classList.remove('registered');
             $('status').textContent = err.message;
             button.disabled = false;
             window.applyNetworkButton?.(button, 'checkin', label);
@@ -133,14 +135,16 @@ function render(changedIds = null) {
       window.syncCheckInButton(submit, submitText, range, window_ms, clockNow());
       submit.classList.toggle('is-locked', submit.disabled);
       form.dataset.shiftId=String(s.id);
-      form.append(submit);form.onsubmit=async e=>{e.preventDefault();submit.disabled=true;try{await api(`/api/schedules/${s.id}/check-in`,'POST');await load();}catch(err){$('status').textContent=err.message;submit.disabled=false;window.applyNetworkButton?.(submit, 'checkin', submitText);}};card.append(form);
+      form.append(submit);
+      form.onsubmit = event => { event.preventDefault(); submit.click(); };
+      card.append(form);
     }
     mountShiftCard(card);
   }
 }
 function openEditor(s){editing=s?s.id:null;editingSpecial=null;const f=$('shiftForm');f.reset();$('formStatus').textContent='';$('editorTitle').textContent=s?'编辑班次':'新增班次';for(const key of ['day','start','end','note'])f.elements[key].value=s?s[key]:(key==='day'?dayInput().value:'');f.elements.members.value=s?s.members.map(m=>m.name).join('\n'):'';$('editor').showModal();}
 if($('day')){$('day').value=today();$('day').onchange=load;}if(admin){
-  $('add').onclick=()=>openEditor(null);$('closeEditor').onclick=()=>$('editor').close();
+  $('closeEditor').onclick=()=>$('editor').close();
   $('shiftForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('[type=submit]');const body=Object.fromEntries(new FormData(f));body.members=body.members.split(/[\n,，、]+/).map(n=>n.trim()).filter(Boolean);b.disabled=true;try{
   if(editingSpecial!==null){const saved=editingSpecial;await api('/api/admin/special-schedules'+(editingSpecial?'/'+editingSpecial:''),editingSpecial?'PUT':'POST',body);$('editor').close();await loadSpecials();$('specialStatus').textContent=saved?'特殊排班已更新。':'特殊排班已添加。';}
   else{await api('/api/admin/schedules'+(editing?'/'+editing:''),editing?'PUT':'POST',body);if($('day'))$('day').value=body.day;$('editor').close();await load();}
@@ -195,7 +199,7 @@ async function refreshMemberCheckinState() {
     const previousAccess = window.networkAccess;
     const wasDutyHidden = $('dutyPage').hidden;
     const previousPermissions = [...(window.memberPermissions || [])].sort().join(',');
-    applyMemberPermissions(state.permissions || []);
+    const pageChanged = applyMemberPermissions(state.permissions || []);
     syncClock(state.now);
     rules = state.rules;
     window.setNetworkAccess?.(state.network_access);
@@ -203,6 +207,7 @@ async function refreshMemberCheckinState() {
         (previousAccess.checkin !== state.network_access.checkin || previousAccess.field !== state.network_access.field)) {
       window.dispatchEvent(new Event('network-access-change'));
     }
+    if (pageChanged && $('dutyPage').hidden) await loadCurrentMemberPage();
     if ((previousDay !== today() || wasDutyHidden) && !$('dutyPage').hidden) await load();
     else updateCheckInButtons();
     if (previousPermissions !== [...window.memberPermissions].sort().join(',') && !$('dutyPage').hidden && typeof loadFieldDuty === 'function') await loadFieldDuty();
@@ -289,17 +294,21 @@ async function refreshAdminPermissions() {
 function applyMemberPermissions(granted) {
   const held = new Set(granted);
   window.memberPermissions = held;
-  const canOpen = permission => permission === null || held.has(permission);
-  const pages = {duty: ['dutyTab', 'dutyPage', null],
-    scheduleList: ['scheduleListTab', 'scheduleListPage', 'schedule_list'],
-    confirm: ['fieldConfirmTab', 'fieldConfirmPage', 'field_confirm']};
-  let selected = Object.keys(pages).find(key => $(pages[key][0])?.classList.contains('active') && canOpen(pages[key][2]));
+  const canOpen = needs => needs.some(permission => held.has(permission));
+  // Sidebar order, top to bottom. The overview opens with either of its two actions;
+  // without both, the first remaining page becomes the landing page.
+  const pages = {duty: ['dutyTab', 'dutyPage', ['duty', 'member_field']],
+    scheduleList: ['scheduleListTab', 'scheduleListPage', ['schedule_list']],
+    confirm: ['fieldConfirmTab', 'fieldConfirmPage', ['field_confirm']]};
+  const previous = Object.keys(pages).find(key => $(pages[key][0])?.classList.contains('active'));
+  let selected = previous && canOpen(pages[previous][2]) ? previous : undefined;
   selected ||= Object.keys(pages).find(key => canOpen(pages[key][2]));
   for (const [key, [tab, page, permission]] of Object.entries(pages)) {
     if ($(tab)) { $(tab).hidden = !canOpen(permission); $(tab).classList.toggle('active', key === selected); }
     if ($(page)) $(page).hidden = key !== selected;
   }
   if ($('memberNoAccess')) $('memberNoAccess').hidden = !!selected;
+  return selected !== previous;
 }
 async function loadCurrentMemberPage() {
   if ($('scheduleListTab')?.classList.contains('active') && typeof loadMemberSchedules === 'function') { await loadMemberSchedules(); return; }

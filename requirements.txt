@@ -1,9 +1,8 @@
 fastapi==0.115.12
 uvicorn[standard]==0.34.2
 httpx==0.28.1
-python-multipart==0.0.20
+python-multipart==0.0.33
 itsdangerous==2.2.0
-qq-botpy>=1.2.0
 PyMySQL[rsa]>=1.1.1,<2
 python-dotenv>=1.0,<2
 pypinyin>=0.51,<1

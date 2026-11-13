@@ -37,8 +37,8 @@ helm upgrade --install duty-scheduling \
 | `mysql.persistence.*` | 内置 MySQL 的 PVC | `8Gi` |
 | `service.type` | `ClusterIP` / `NodePort` / `LoadBalancer` | `ClusterIP` |
 | `ingress.enabled` | 是否创建 Ingress | `false` |
-| `clientIpHeader` | 最外层代理写入的真实 IP 头；空 = 不信任任何头 | 空 |
-| `publicBaseUrl` | MCP OAuth 回调使用的公开地址 | 空 |
+| `clientIpHeader` | 最外层代理覆盖写入的真实 IP 头，须通过 environment.LOGIN_TRUSTED_PROXIES 指定受信任的直连代理 IP 或 CIDR | 空 |
+| `publicBaseUrl` | 启动日志中管理员入口的公开地址 | 空 |
 | `sessionHttpsOnly` | `1` 时 Cookie 只走 HTTPS；空 = 不设置 | 空 |
 | `environment` | 额外非敏感环境变量，覆盖上面这些字段渲染出的同名变量 | `{}` |
 | `extraEnv` | 原始 env 列表，支持 `valueFrom`，优先级最高 | `[]` |

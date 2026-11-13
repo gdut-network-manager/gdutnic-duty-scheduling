@@ -10,6 +10,7 @@ import hashlib
 import json
 import secrets
 import time
+from datetime import datetime
 from urllib.parse import urlencode, urlsplit
 
 import httpx
@@ -131,8 +132,8 @@ def link(conn, flow, name):
         # An account deleted and recreated under the same name is a new identity.
         conn.execute('DELETE FROM keycloak_links WHERE username=?', (name,))
     if not existing:
-        conn.execute('INSERT INTO keycloak_links(identity_key,issuer,subject,username,account_key) VALUES(?,?,?,?,?)',
-                     (key, flow['issuer'], flow['subject'], name, current))
+        conn.execute('INSERT INTO keycloak_links(identity_key,issuer,subject,username,account_key,linked_at) VALUES(?,?,?,?,?,?)',
+                     (key, flow['issuer'], flow['subject'], name, current, datetime.now().isoformat(timespec='seconds')))
 
 
 def unlink_account(name):
@@ -326,7 +327,7 @@ async def verify(request: Request):
         flow = pending(request, conn)
     csrf(request, body, flow)
     name, password = str(body.get('username') or '').strip(), str(body.get('password') or '')
-    key, account = 'admin:' + api.security.client_key(request), 'admin:' + name.casefold()
+    key, account = 'admin:' + api.security.login_client_key(request), 'admin:' + name.casefold()
     # A binding proof that can authorize admin login uses the existing admin throttle.
     privileged = flow['target'] == 'admin' or permissions.is_admin(name)
     if privileged and (api.ADMIN_LIMITER.blocked(key) or api.ACCOUNT_LIMITER.blocked(account)):

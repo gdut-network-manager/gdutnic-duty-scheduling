@@ -40,6 +40,7 @@ function paintFieldStatus(data) {
 }
 
 async function loadFieldDuty() {
+  if ($('fieldButton').classList.contains('is-submitting')) return;
   $('fieldButton').disabled = true;
   $('fieldStatus').textContent = '';
   try { paintFieldStatus(await api('/api/member/field-duty')); }
@@ -58,13 +59,20 @@ $('fieldButton').onclick = async () => {
   const button = $('fieldButton');
   if (button.disabled || button.classList.contains('registered') || button.classList.contains('pending')) return;
   try {
+    button.classList.add('is-submitting');
     button.disabled = true;
-    paintFieldStatus(await api('/api/member/field-duty', 'POST'));
+    await playRegistrationAnimation(button);
+    const result = await api('/api/member/field-duty', 'POST');
+    button.classList.remove('is-submitting');
+    paintFieldStatus(result);
   } catch (err) {
+    button.classList.remove('is-submitting', 'registered');
     $('fieldStatus').textContent = err.message;
     setFieldLabel(button.matches(':hover') ? FIELD_HOVER : FIELD_IDLE);
     await loadFieldDuty();
     $('fieldStatus').textContent = err.message;
+  } finally {
+    button.classList.remove('is-submitting');
   }
 };
 

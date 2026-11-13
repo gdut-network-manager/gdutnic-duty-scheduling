@@ -20,6 +20,7 @@ def shift_bounds(shift):
 
 
 def list_day(day, name=None):
+    finalize_absences()
     previous = (date.fromisoformat(day) - timedelta(days=1)).isoformat()
     with db.read() as conn:
         init(conn)
@@ -47,14 +48,14 @@ def _members_many(conn, shift_ids, name=None):
     if not shift_ids:
         return grouped
     placeholders = ','.join('?' for _ in shift_ids)
-    sql = f'SELECT shift_id,name,checked_at FROM attendance WHERE shift_id IN ({placeholders})'
+    sql = f'SELECT shift_id,name,checked_at,status_override,final_status FROM attendance WHERE shift_id IN ({placeholders})'
     args = list(shift_ids)
     if name is not None:
         sql += ' AND name=?'
         args.append(name)
     for row in conn.execute(sql + ' ORDER BY shift_id,name', args):
         grouped.setdefault(row['shift_id'], []).append(
-            {'name': row['name'], 'checked_at': row['checked_at']})
+            {'name': row['name'], 'checked_at': row['checked_at'], 'status_override': row['status_override'], 'final_status': row['final_status']})
     return grouped
 
 
@@ -62,31 +63,12 @@ def _attach_status(items, name=None):
     """Add late/absent/pending status for the member view, using the configured rules."""
     if not items:
         return
-    from server import duty_settings
-    rules = duty_settings.load()
-    now = system_clock.now()
+    from server.overview import member_status
     for item in items:
-        start, end = shift_bounds(item)
-        late_at = start + timedelta(minutes=rules['late_minutes'])
-        absent_at = start + timedelta(minutes=rules['absent_minutes'])
         for member in item['members']:
-            checked = member.get('checked_at')
-            if checked:
-                try:
-                    at = datetime.fromisoformat(str(checked))
-                except ValueError:
-                    member['status'] = 'normal'
-                    continue
-                if at.tzinfo is None:
-                    at = at.replace(tzinfo=TZ)
-                # Already checked in: the label stays "已签到"; only the colour changes.
-                member['status'] = 'absent' if at >= absent_at else 'late' if at > late_at else 'normal'
-            elif now >= end:
-                # Only a finished shift can make an unchecked member absent.
-                member['status'] = 'absent'
-            else:
-                # Unchecked and still running (or upcoming): keep it neutral.
-                member['status'] = 'pending'
+            member['status'] = member_status(item, member, None, None)
+            member.pop('status_override', None)
+            member.pop('final_status', None)
 
 
 def validate_shift(body):
@@ -207,16 +189,16 @@ def _archive_and_delete(conn, where='', args=()):
     _init_history(conn)
     stamp = system_clock.now().isoformat(timespec='seconds')
     checked = conn.execute(
-        'SELECT s.day,s.start,s.end,s.location,s.note,a.name,a.checked_at'
+        'SELECT s.day,s.start,s.end,s.location,s.note,a.name,a.checked_at,a.status_override,a.final_status'
         ' FROM shifts s JOIN attendance a ON a.shift_id=s.id'
-        ' WHERE a.checked_at IS NOT NULL' + (' AND ' + where if where else ''),
+        " WHERE (a.checked_at IS NOT NULL OR a.final_status<>'' OR a.status_override<>'')" + (' AND ' + where if where else ''),
         args).fetchall()
     if checked:
         conn.executemany(
             'INSERT INTO attendance_history'
-            '(day,start,end,name,checked_at,location,note,archived_at) VALUES(?,?,?,?,?,?,?,?)',
-            [(r['day'], r['start'], r['end'], r['name'], r['checked_at'], r['location'],
-              r['note'] or '', stamp) for r in checked])
+            '(day,start,end,name,checked_at,location,note,archived_at,final_status) VALUES(?,?,?,?,?,?,?,?,?)',
+            [(r['day'], r['start'], r['end'], r['name'], r['checked_at'] or '', r['location'],
+              r['note'] or '', stamp, r['status_override'] or r['final_status']) for r in checked])
     deleted = conn.execute('DELETE FROM shifts' + (' WHERE ' + where if where else ''),
                            args).rowcount
     return deleted, len(checked)
@@ -305,7 +287,7 @@ def check_in_with_chain(shift_id, name, now=None):
             raise ValueError(f'仅可在班次开始前 {early.seconds // 60} 分钟至结束时间内签到')
         stamp = row['checked_at'] or now.isoformat(timespec='seconds')
         if not row['checked_at']:
-            conn.execute('UPDATE attendance SET checked_at=? WHERE shift_id=? AND name=?', (stamp, shift_id, name))
+            conn.execute('UPDATE attendance SET checked_at=?,final_status=? WHERE shift_id=? AND name=?', (stamp, checkin_status(start, now), shift_id, name))
 
         # Pair by the day's shift order (1st/2nd, 3rd/4th), not just this person's rows,
         # so someone assigned only to the 2nd and 3rd shifts is never chained.
@@ -322,9 +304,35 @@ def check_in_with_chain(shift_id, name, now=None):
             partner_start, partner_end = shift_bounds(partner)
             # The partner must belong to this person, be unchecked, and start when this one ends.
             if assigned and not assigned['checked_at'] and partner_start == end:
-                conn.execute('UPDATE attendance SET checked_at=? WHERE shift_id=? AND name=?',
-                             (stamp, partner['id'], name))
+                conn.execute('UPDATE attendance SET checked_at=?,final_status=? WHERE shift_id=? AND name=?',
+                             (stamp, checkin_status(partner_start, now), partner['id'], name))
                 chained.append(partner['id'])
         if not row['checked_at'] or chained:
             attendance_live.publish(conn)
         return stamp, chained
+
+
+def checkin_status(start, at):
+    from server import duty_settings
+    rules = duty_settings.load()
+    if at >= start + timedelta(minutes=rules['absent_minutes']):
+        return 'absent'
+    if at > start + timedelta(minutes=rules['late_minutes']):
+        return 'late'
+    return 'normal'
+
+
+def finalize_absences(now=None):
+    """Record missed check-ins once; preserve every saved or manual decision."""
+    from server import duty_settings
+    now = now or system_clock.now()
+    threshold = timedelta(minutes=duty_settings.load()['absent_minutes'])
+    with db.write() as conn:
+        rows = conn.execute("SELECT s.day,s.start,s.end,a.shift_id,a.name FROM attendance a "
+                            "JOIN shifts s ON s.id=a.shift_id WHERE a.checked_at IS NULL "
+                            "AND a.final_status='' AND a.status_override='' AND s.day<=?",
+                            (now.date().isoformat(),)).fetchall()
+        due = [(r['shift_id'], r['name']) for r in rows if now >= shift_bounds(r)[0] + threshold]
+        if due:
+            conn.executemany("UPDATE attendance SET final_status='absent' WHERE shift_id=? AND name=?", due)
+            attendance_live.publish(conn)

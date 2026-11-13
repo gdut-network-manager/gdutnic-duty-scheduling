@@ -25,6 +25,10 @@ def cleanup_unused():
     from server.security import MEMBER_SESSIONS
     perms_store.ensure_defaults()
     with db.write() as conn:
+        group = conn.execute('SELECT permissions FROM permission_groups WHERE id=?',
+                             (perms_store.DEFAULT_GROUP,)).fetchone()
+        if group and perms_store.decode(group['permissions']) & perms_store.ADMIN_PERMISSIONS:
+            return {'deleted': 0, 'usernames': []}  # Bulk cleanup never deletes administrators.
         names = roster_names()
         removed = [row['username'] for row in conn.execute(
             'SELECT username FROM member_accounts WHERE group_id=?', (perms_store.DEFAULT_GROUP,))
@@ -35,7 +39,8 @@ def cleanup_unused():
     return {'deleted': len(removed), 'usernames': sorted(removed)}
 
 
-def create_missing(names):
+def create_missing(names, *, authorize=None):
+    """Authorize a new-account grant inside the write transaction, only if needed."""
     names = sorted({n.strip() for n in names if isinstance(n, str) and n.strip()})
     if any(len(n) > 64 for n in names):
         raise ValueError('姓名不能超过 64 字')
@@ -46,6 +51,8 @@ def create_missing(names):
         missing = [name for name in names if name not in existing]
         # Hash once per run: every new account starts with the same initial password.
         if missing:
+            if authorize is not None:
+                authorize()
             hashed = admin_store._hash_password(INITIAL_PASSWORD)
             conn.executemany('INSERT INTO member_accounts(username,password,active,group_id) VALUES(?,?,1,?)',
                              [(name, hashed, perms_store.DEFAULT_GROUP) for name in missing])

@@ -23,7 +23,7 @@ TABLES = {
     'attendance': {
         'label': '考勤人员', 'pk': ['shift_id', 'name'],
         'editable': ['checked_at', 'status_override'],
-        'search': ['name', 'checked_at', 'status_override'],
+        'search': ['name', 'checked_at', 'status_override', 'final_status'],
         'masked': [],
         # The shift's own date and times are the meaningful timestamp for this row;
         # `checked_at` is the sign-in moment and may be empty.
@@ -71,13 +71,13 @@ TABLES = {
     },
     'settings': {
         'label': '站点设置', 'pk': ['key'],
-        # Writing a settings row is restricted further in update_row: only the keys that
-        # the data console is allowed to expose there can ever change.
-        'editable': ['value'],
+        # Read-only here: every setting has its own screen, which also checks the
+        # matching permission. update_row enforces the same rule a second time.
+        'editable': [],
         'search': ['key'],
         'masked': [],  # masked per row below, since only some keys are secret
         # Deleting a setting can strand the site (bootstrap flag, admin path, session
-        # secret), so rows here are read/write but never removable from this console.
+        # secret), so rows here are never removable from this console.
         'deletable': False,
     },
     'users': {
@@ -89,38 +89,46 @@ TABLES = {
         'search': ['username'],
         'masked': ['password'],
     },
-    'visitors': {
-        'label': '访客', 'pk': ['id'],
-        'editable': ['current_id'],
-        'search': ['id'],
-        'masked': [],
-    },
-    'chats': {
-        'label': '旧版会话', 'pk': ['visitor_id', 'id'],
-        'editable': ['title'],
-        'search': ['title'],
-        'masked': [],
-    },
-    'messages': {
-        'label': '旧版消息', 'pk': ['visitor_id', 'chat_id', 'seq'],
+    # The tables below are view-only. Each is maintained by its own screen, which also
+    # revokes sessions or checks the matching permission; editing rows here would skip that.
+    'permission_groups': {
+        'label': '权限组', 'pk': ['id'],
         'editable': [],
-        'search': ['role'],
+        'deletable': False,  # group membership and scope change only in 权限组管理
+        'search': ['id', 'name'],
         'masked': [],
     },
-    'oauth_clients': {
-        'label': 'OAuth 客户端', 'pk': ['origin', 'redirect_uri'],
+    'push_deliveries': {
+        'label': '推送发送记录', 'pk': ['id'],
         'editable': [],
-        'search': ['origin'],
-        'masked': ['client_secret'],
+        'deletable': False,  # removing a sent record would let the same period be mailed again
+        'search': ['period_end', 'recipient', 'state'],
+        'masked': [],
     },
+    'keycloak_links': {
+        'label': 'SSO 绑定', 'pk': ['identity_key'],
+        'editable': [],
+        'deletable': False,  # unbinding goes through 用户管理 so SSO logins are revoked too
+        'search': ['username', 'issuer'],
+        'masked': [],
+    },
+    'login_sessions': {
+        'label': '登录会话', 'pk': ['id'],
+        'editable': [],
+        'deletable': False,
+        'search': ['username', 'kind'],
+        'masked': ['id'],  # the row id is the session handle itself
+    },
+    # keycloak_flows is deliberately absent: its rows are short-lived login attempts whose
+    # only content is the state, nonce, PKCE verifier and CSRF token.
 }
 # Settings keys whose values are credentials, not readable configuration.
 SECRET_SETTING_PARTS = ('mcp', 'qq', 'oauth', 'password', 'secret', 'key', 'model', 'smtp', 'sso', 'keycloak')
-# Settings rows this console may write. Everything else (the bootstrap flag, the admin
-# path, the signing secret, rules, clocks, sessions, SSO) is only reachable through its
-# own screen, which also checks the matching permission. Without this list the data
-# permission alone could rewrite, for example, setup_done and re-open registration.
-WRITABLE_SETTINGS = frozenset({'chat_max_mb'})
+# Settings rows this console may write: currently none. Everything (the bootstrap flag,
+# the admin path, the signing secret, rules, clocks, sessions, SSO) is only reachable
+# through its own screen, which also checks the matching permission. Without this list
+# the data permission alone could rewrite, for example, setup_done and re-open registration.
+WRITABLE_SETTINGS = frozenset()
 
 PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
@@ -338,7 +346,7 @@ def _privileged(keys, actor=''):
     target = str((keys or {}).get('username') or '')
     if not target or target == (actor or ''):
         return False
-    if permissions.has(actor, 'members'):
+    if permissions.has(actor, 'members') and permissions.has(actor, 'permission_groups'):
         return False
     return _account_is_admin(target)
 

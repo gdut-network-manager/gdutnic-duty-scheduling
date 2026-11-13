@@ -1,12 +1,11 @@
-# GDUTNIC Keycloak 登录配置
 
 > 本应用不自带任何身份提供方地址：`.env.example` 与后台输入框默认都是空的，先填写你自己部署的 Keycloak 地址才能启用 SSO。下文出现的地址只是本协会部署的示例。
 
 ## 已确认的公开信息（本协会部署，仅供参考）
 
-2026-11-10 已读取 `https://sso.gdutnic.com/realms/nic/.well-known/openid-configuration`：
 
-- issuer：`https://sso.gdutnic.com/realms/nic`
+
+- issuer
 - 支持 Authorization Code、PKCE S256、UserInfo。
 - 声明支持 `preferred_username`、`name`、`given_name`、`family_name` 等字段。
 
@@ -14,7 +13,7 @@
 
 ## Keycloak 端需要的设置
 
-在 `nic` Realm 创建专用 OpenID Connect Client（例如 `gdutnic-outline-assistant`）：
+在 `nic` Realm 创建专用 OpenID Connect Client
 1. 开启 Standard flow；使用 Authorization Code + PKCE S256。
 2. 可以使用 public Client；也支持开启 Client authentication 的 confidential Client，使用 `client_secret_post`。
 3. Valid redirect URIs 填写精确地址：`https://排班系统域名/api/auth/keycloak/callback`。不要使用通配符。

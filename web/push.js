@@ -127,7 +127,7 @@
         section.rows.forEach(cells => { const row = el('tr'); cells.forEach(value => row.append(el('td', '', String(value)))); tbody.append(row); });
         table.append(tbody); wrap.append(table);
       }
-      $('pushPreviewStatus').textContent = '日期时间为班次开始时间；本月累计按周期结束日所在月份统计，分组为当前权限组。';
+      $('pushPreviewStatus').textContent = '';
     } catch (error) { if (request === revision) $('pushPreviewStatus').textContent = error.message; }
   }
   function drawStatus(data) {

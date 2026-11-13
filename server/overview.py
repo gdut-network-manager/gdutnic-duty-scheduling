@@ -5,38 +5,20 @@ from pypinyin import lazy_pinyin
 
 from server import db, duty_settings, schedule_store, system_clock
 
-STATUS_LABELS = {'normal': '正常', 'late': '迟到', 'absent': '旷班', 'pending': '待签到'}
+STATUS_LABELS = {'normal': '正常', 'late': '迟到', 'absent': '旷班', 'pending': '待签到', 'unconfirmed': '待确认'}
 # Statuses an administrator may set by hand from the overview card.
 MANUAL_STATUSES = ('normal', 'late', 'absent')
 
 
 def member_status(shift, member, now, rules):
-    """Classify one attendance row from the shift start time.
-
-    Thresholds are cumulative: anything after `absent_minutes` counts as absent,
-    whether or not the person eventually checked in; `late_minutes` only covers
-    the window between late and absent. An administrator's manual override wins.
-    """
+    """Read the recorded decision; timestamps and current rules never rewrite history."""
     override = str(member.get('status_override') or '')
     if override in MANUAL_STATUSES:
         return override
-    start, end = schedule_store.shift_bounds(shift)
-    late_at = start + timedelta(minutes=rules['late_minutes'])
-    absent_at = start + timedelta(minutes=rules['absent_minutes'])
-    checked = member.get('checked_at')
-    if checked:
-        try:
-            at = datetime.fromisoformat(str(checked))
-        except ValueError:
-            return 'normal'
-        if at.tzinfo is None:
-            at = at.replace(tzinfo=schedule_store.TZ)
-        if at >= absent_at:
-            return 'absent'
-        return 'late' if at > late_at else 'normal'
-    if now >= absent_at:
-        return 'absent'
-    return 'pending'
+    status = str(member.get('final_status') or '')
+    if status in MANUAL_STATUSES:
+        return status
+    return 'unconfirmed' if member.get('checked_at') else 'pending'
 
 
 def _attendance_by_shift(conn, rows):
@@ -47,17 +29,17 @@ def _attendance_by_shift(conn, rows):
         return grouped
     placeholders = ','.join('?' for _ in ids)
     for record in conn.execute(
-            f'SELECT shift_id,name,checked_at,status_override FROM attendance WHERE shift_id IN ({placeholders})'
+            f'SELECT shift_id,name,checked_at,status_override,final_status FROM attendance WHERE shift_id IN ({placeholders})'
             ' ORDER BY shift_id,name', ids):
         grouped.setdefault(record['shift_id'], []).append(
             {'name': record['name'], 'checked_at': record['checked_at'],
-             'status_override': record['status_override'] or ''})
+             'status_override': record['status_override'] or '', 'final_status': record['final_status'] or ''})
     return grouped
 
 
 def _shift_payload(conn, row, now, rules, attendance=None):
     members = [dict(m) for m in (attendance.get(row['id'], []) if attendance is not None else
-               conn.execute('SELECT name,checked_at,status_override FROM attendance WHERE shift_id=? ORDER BY name',
+               conn.execute('SELECT name,checked_at,status_override,final_status FROM attendance WHERE shift_id=? ORDER BY name',
                             (row['id'],)))]
     for member in members:
         member['status'] = member_status(row, member, now, rules)
@@ -119,6 +101,7 @@ def week_span(now=None):
 def overview(month=None, now=None, week=None):
     now = system_clock.now() if now is None else now
     rules = duty_settings.load()
+    schedule_store.finalize_absences(now)
     first, last = _month_bounds(month or now.strftime('%Y-%m'))
     week_start = parse_week(week, now)
     week_end = week_start + timedelta(days=6)
@@ -144,6 +127,8 @@ def overview(month=None, now=None, week=None):
                 # Only shifts that have already started count towards the month's rate.
                 if schedule_store.shift_bounds(row)[0] <= now:
                     for member in item['members']:
+                        if member['status'] not in MANUAL_STATUSES:
+                            continue
                         total += 1
                         if member['status'] == 'normal':
                             normal += 1
@@ -152,19 +137,21 @@ def overview(month=None, now=None, week=None):
                         elif member['status'] == 'absent':
                             absent += 1
         # Archived check-ins (schedules cleared) still count for the month.
-        live = {(m['name'], m['checked_at']) for item in month_items for m in item['members']
-                if m['checked_at']}
+        live = {(item['day'], item['start'], m['name'], m['checked_at'] or '')
+                for item in month_items for m in item['members']}
         for row in conn.execute(
-                'SELECT day,start,end,name,checked_at FROM attendance_history'
+                'SELECT day,start,end,name,checked_at,final_status FROM attendance_history'
                 ' WHERE day>=? AND day<=?', (first.isoformat(), last.isoformat())).fetchall():
-            if (row['name'], row['checked_at']) in live:
+            if (row['day'], row['start'], row['name'], row['checked_at'] or '') in live:
                 continue
             shift = {'day': row['day'], 'start': row['start'], 'end': row['end']}
             if schedule_store.shift_bounds(shift)[0] > now:
                 continue
-            total += 1
-            member = {'name': row['name'], 'checked_at': row['checked_at'], 'status_override': ''}
+            member = {'name': row['name'], 'checked_at': row['checked_at'], 'final_status': row['final_status']}
             status = member_status(shift, member, now, rules)
+            if status not in MANUAL_STATUSES:
+                continue
+            total += 1
             if status == 'normal':
                 normal += 1
             elif status == 'late':
@@ -232,6 +219,7 @@ def anomaly_stats(weeks=2, now=None):
     weeks = 2 if int(weeks) == 2 else 4
     now = system_clock.now() if now is None else now
     rules = duty_settings.load()
+    schedule_store.finalize_absences(now)
     start_day = (now.date() - timedelta(days=weeks * 7 - 1)).isoformat()
     end_day = now.date().isoformat()
     late = {}
@@ -248,21 +236,21 @@ def anomaly_stats(weeks=2, now=None):
                 continue
             for member in attendance.get(row['id'], []):
                 status = member_status(row, member, now, rules)
-                seen.add((row['day'], row['start'], member['name'], member['checked_at']))
+                seen.add((row['day'], row['start'], member['name'], member['checked_at'] or ''))
                 if status == 'late':
                     late[member['name']] = late.get(member['name'], 0) + 1
                 elif status == 'absent':
                     absent[member['name']] = absent.get(member['name'], 0) + 1
         # Archived check-ins from cleared schedules count too.
         for row in conn.execute(
-                'SELECT day,start,end,name,checked_at FROM attendance_history'
+                'SELECT day,start,end,name,checked_at,final_status FROM attendance_history'
                 ' WHERE day>=? AND day<=?', (start_day, end_day)).fetchall():
-            if (row['day'], row['start'], row['name'], row['checked_at']) in seen:
+            if (row['day'], row['start'], row['name'], row['checked_at'] or '') in seen:
                 continue
             shift = {'day': row['day'], 'start': row['start'], 'end': row['end']}
             if schedule_store.shift_bounds(shift)[0] > now:
                 continue
-            status = member_status(shift, {'checked_at': row['checked_at']}, now, rules)
+            status = member_status(shift, {'checked_at': row['checked_at'], 'final_status': row['final_status']}, now, rules)
             if status == 'late':
                 late[row['name']] = late.get(row['name'], 0) + 1
             elif status == 'absent':
@@ -290,8 +278,8 @@ def set_member_status(shift_id, name, status):
                            (shift_id, name)).fetchone()
         if not row:
             raise LookupError('未找到该班次或排班人员')
-        conn.execute('UPDATE attendance SET status_override=? WHERE shift_id=? AND name=?',
-                     (status, shift_id, name))
+        conn.execute('UPDATE attendance SET status_override=?,final_status=? WHERE shift_id=? AND name=?',
+                     (status, status, shift_id, name))
     return {'shift_id': shift_id, 'name': name, 'status': status}
 
 

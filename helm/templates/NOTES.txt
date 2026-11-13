@@ -32,8 +32,8 @@
 
 5. 真实客户端 IP：
 {{- if .Values.clientIpHeader }}
-   应用从 {{ .Values.clientIpHeader }} 读取客户端地址。请确保最外层 Nginx 使用
+   通过 environment.LOGIN_TRUSTED_PROXIES 配置受信任的直连代理 IP 或 CIDR。请确保最外层 Nginx 使用
    proxy_set_header {{ .Values.clientIpHeader }} $remote_addr;
 {{- else }}
-   当前未启用代理头，所有请求都会按代理地址计数。生产环境请设置 clientIpHeader。
+   打卡和外勤按直连地址判断。登录限流可从可信代理读取 X-Real-IP。
 {{- end }}

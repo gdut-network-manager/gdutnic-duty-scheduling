@@ -15,7 +15,7 @@ function renderMembers() {
     title.append(tags);
     const actions = el('div', 'actions');
     actions.append(
-      button('更改权限', 'secondary', () => openPermission(member)),
+      ...(memberMeta.can_grant ? [button('更改权限', 'secondary', () => openPermission(member))] : []),
       button('更改密码', 'secondary', () => openPassword(member)),
       button('重置密码', 'secondary', async () => {
         if (!confirm(`将「${member.username}」的密码重置为 gg2017？`)) return;

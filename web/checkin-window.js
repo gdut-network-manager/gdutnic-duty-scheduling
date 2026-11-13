@@ -7,8 +7,6 @@
   // Labels match the animated attendance control.
   function checkInLabel(range, limits, now = Date.now()) {
     if (!canCheckIn(range, limits, now)) return '未在签到时间内';
-    if (now >= range.start + limits.absent) return '确认签到（已记为未到岗）';
-    if (now >= range.start + limits.late) return '确认签到（迟到）';
     return '确认签到';
   }
   // `text` is the label span inside the animated button; buttons without one still work.

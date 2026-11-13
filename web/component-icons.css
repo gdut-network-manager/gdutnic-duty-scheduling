@@ -34,8 +34,27 @@ h2[data-icon]::before, h3[data-icon]::before { color: var(--md-primary); }
   opacity: .65;
 }
 .member-search[data-icon] { position: relative; display: inline-flex; align-items: center; }
-.member-search[data-icon]::before { position: absolute; left: 12px; color: var(--md-secondary); }
-.member-search[data-icon] input { padding-left: 38px; }
+/* The 18px icon is centred on the centre of the 40px pill's left cap. */
+.member-search[data-icon]::before { position: absolute; left: 11px; color: var(--md-secondary); }
+/* The icon's room is text-indent, not padding: an auto-width input is sized from its padding, so animating padding would resize the whole bar. */
+.member-search[data-icon] input { padding-left: 16px; padding-right: 40px; text-indent: 22px; transition: text-indent 150ms ease, outline-color 150ms ease; }
+.member-search[data-icon]::before { transition: opacity 150ms ease; }
+.member-search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+/* Material search bar without a back action: while the field is focused or holds a query the
+   leading icon leaves and a clear button appears, centred on the centre of the pill's right cap. */
+.search-clear {
+  position: absolute; top: 0; bottom: 0; right: 0; aspect-ratio: 1;
+  display: grid; place-items: center;
+  margin: 0; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--md-on-surface-variant);
+  cursor: pointer; opacity: 0; visibility: hidden;
+  transition: opacity 150ms ease, visibility 150ms;
+}
+.search-clear:hover { background: color-mix(in srgb, var(--md-on-surface) 8%, transparent); }
+.search-clear:focus-visible { outline-offset: -4px; }
+.member-search[data-icon]:is(:focus-within, :has(input:not(:placeholder-shown)))::before { opacity: 0; }
+.member-search[data-icon]:is(:focus-within, :has(input:not(:placeholder-shown))) input { text-indent: 0; }
+.member-search:is(:focus-within, :has(input:not(:placeholder-shown))) .search-clear { opacity: 1; visibility: visible; }
 @media (max-width: 650px) {
   .stats > .stat-with-icon { padding-right: 32px; }
   .stat-with-icon::before { width: 18px; height: 18px; right: 9.6px; top: 12.8px; }
@@ -70,6 +89,7 @@ h2[data-icon]::before, h3[data-icon]::before { color: var(--md-primary); }
 [data-icon="lock-reset"] { --component-icon: url("/icon/components/lock-reset.svg"); }
 [data-icon="login"] { --component-icon: url("/icon/components/login.svg"); }
 [data-icon="logout"] { --component-icon: url("/icon/components/logout.svg"); }
+[data-icon="menu"] { --component-icon: url("/icon/components/menu.svg"); }
 [data-icon="magnify"] { --component-icon: url("/icon/components/magnify.svg"); }
 [data-icon="map-marker-check-outline"] { --component-icon: url("/icon/components/map-marker-check-outline.svg"); }
 [data-icon="pencil-outline"] { --component-icon: url("/icon/components/pencil-outline.svg"); }

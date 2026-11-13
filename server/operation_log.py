@@ -118,9 +118,9 @@ def record(actor, action, detail='', role=''):
         print(f'[log] 写入操作日志失败：{type(exc).__name__}: {exc}')
 
 
-def list_entries(limit=300, actor='', action=''):
+def list_entries(limit=100, actor='', action='', offset=0):
     """Newest first, optionally filtered by account or action keyword."""
-    limit = max(1, min(int(limit), 1000))
+    limit = max(1, min(int(limit), 100))
     with db.read() as conn:
         init(conn)
         sql = 'SELECT at,actor,role,action,detail FROM operation_log'
@@ -134,10 +134,28 @@ def list_entries(limit=300, actor='', action=''):
             args.extend([f'%{action}%', f'%{action}%'])
         if clauses:
             sql += ' WHERE ' + ' AND '.join(clauses)
-        sql += ' ORDER BY id DESC LIMIT ?'
-        args.append(limit)
+        sql += ' ORDER BY id DESC LIMIT ? OFFSET ?'
+        args.extend([limit, max(0, int(offset))])
         rows = conn.execute(sql, args).fetchall()
     return [dict(row) for row in rows]
+
+
+def count_entries(actor='', action=''):
+    """Count logs matching the same filters as the list."""
+    clauses = []
+    args = []
+    if actor:
+        clauses.append('actor=?')
+        args.append(actor)
+    if action:
+        clauses.append('(action LIKE ? OR detail LIKE ?)')
+        args.extend([f'%{action}%', f'%{action}%'])
+    sql = 'SELECT COUNT(*) AS n FROM operation_log'
+    if clauses:
+        sql += ' WHERE ' + ' AND '.join(clauses)
+    with db.read() as conn:
+        init(conn)
+        return conn.execute(sql, args).fetchone()['n']
 
 
 def stats():

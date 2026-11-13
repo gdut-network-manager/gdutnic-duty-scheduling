@@ -1,0 +1,506 @@
+:root { color-scheme: light; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --schedule-error-container: var(--md-error-container);
+  --schedule-on-error-container: var(--md-on-error-container);
+  --schedule-success-container: var(--md-success-container);
+  --schedule-on-success-container: var(--md-on-success-container);
+  --schedule-warning-container: var(--md-warning-container);
+  --schedule-on-warning-container: var(--md-on-warning-container);
+  --md-primary: #8AD0EE;
+  --md-on-primary: #003545;
+  --md-primary-container: #004D63;
+  --md-on-primary-container: #BCE9FF;
+  --md-secondary: #B4CAD5;
+  --md-on-secondary: #1E333C;
+  --md-secondary-container: #354A53;
+  --md-on-secondary-container: #CFE6F2;
+  --md-tertiary: #C5C3EA;
+  --md-on-tertiary: #2E2D4D;
+  --md-tertiary-container: #444364;
+  --md-on-tertiary-container: #E2DFFF;
+  --md-surface: #0F1417;
+  --md-surface-low: #171C1F;
+  --md-surface-high: #262B2D;
+  /* Segmented list items: the page surface, a little lighter. */
+  --md-list-item: #1E2428;
+  --md-on-surface: #DEE3E6;
+  --md-on-surface-variant: #C0C8CC;
+  --md-outline: #8A9296;
+  --md-outline-variant: #40484C;
+  --md-error: #FFB4AB;
+  --md-on-error: #690005;
+  --md-error-container: #690005;
+  --md-on-error-container: #FFDAD6;
+  --md-success-container: #163D20;
+  --md-on-success-container: #B8F0BB;
+  --md-warning-container: #493B00;
+  --md-on-warning-container: #FFE088;
+  --md-ok: #8AD0EE;
+  --md-error-pulse: #B3261E;
+  --md-animated-hover-ink: #BCE9FF;
+  --md-shadow: 0 6.4px 19.2px rgba(0, 0, 0, .24);
+  --schedule-primary-container: #004D63;
+  --schedule-on-primary-container: #BCE9FF;
+  --schedule-primary: #8AD0EE;
+  --schedule-success-outline: #376343;
+  --schedule-warning: #E9C349;
+  --schedule-warning-outline: #706023;
+  --schedule-surface-low: #171C1F;
+  --schedule-error: #FFB4AB;
+  --schedule-disabled-container: #2D3438;
+  --schedule-disabled-ink: #A0AAAF;
+  --schedule-surface-high: #262B2D;
+}
+.ga-brand { gap: 6px; }
+.ga-brand h1 { white-space: nowrap; }
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.theme-toggle:hover { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.theme-toggle:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+[data-icon="weather-sunny"] { --component-icon: url("/icon/weather-sunny.svg"); }
+[data-icon="weather-night"] { --component-icon: url("/icon/weather-night.svg"); }
+/* Existing SVG masks inherit each control's semantic foreground color. */
+[data-theme="dark"] img[src="/icon/gdutnic.png"] { filter: brightness(0) invert(1); }
+[data-theme="dark"] .mark,
+[data-theme="dark"] .composer { background: var(--md-surface-high); }
+[data-theme="dark"] .cache-limit-bar { background: var(--md-surface-low); }
+/* All three status families use the same container/on-container tier. */
+[data-theme="dark"] .btn.danger {
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
+}
+[data-theme="dark"] :is(.status.bad, .msg.error) { color: var(--md-on-error-container); }
+[data-theme="dark"] :is(.week-card.warn, .detail-member.late) { color: var(--md-on-warning-container); }
+[data-theme="dark"] :is(.week-card.danger, .detail-member.absent) { color: var(--md-on-error-container); }
+[data-theme="dark"] :is(.week-card.ok, .detail-member.normal) { color: var(--md-on-success-container); }
+[data-theme="dark"] .push-table th { background: var(--md-surface-low); }
+[data-theme="dark"] .push-table :is(th, td),
+[data-theme="dark"] .push-delivery { border-bottom-color: var(--md-outline-variant); }
+[data-theme="dark"] .auth-background { background: var(--md-surface); }
+[data-theme="dark"] .auth-background::before {
+  background: radial-gradient(ellipse at center, rgba(0, 77, 99, .65), rgba(0, 77, 99, 0) 70%);
+}
+[data-theme="dark"] .auth-background::after {
+  background: radial-gradient(ellipse at center, rgba(68, 67, 100, .5), rgba(68, 67, 100, 0) 70%);
+}
+/* SVG presentation attributes otherwise retain the light timeline colors. */
+[data-theme="dark"] .shift-timeline [fill="#235779"] { fill: var(--md-primary); }
+[data-theme="dark"] .shift-timeline [stroke="#235779"] { stroke: var(--md-primary); }
+[data-theme="dark"] .shift-timeline [fill="#7292a1"] { fill: var(--md-on-surface-variant); }
+[data-theme="dark"] .shift-timeline [fill="#932b37"],
+[data-theme="dark"] .shift-timeline [fill="#c62828"] { fill: var(--md-error); }
+[data-theme="dark"] .shift-timeline [fill="#b98100"] { fill: var(--schedule-warning); }
+:root[data-theme="dark"] select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23C0C8CC' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6l4.5 4.5L12.5 6'/%3E%3C/svg%3E") !important; }
+[data-theme="dark"] .md-select-menu { box-shadow: 0 0 0 1px var(--md-outline-variant), 0 8px 22.4px rgba(0, 0, 0, .45); }
+
+/* Light-mode cards follow Material 3 (m3.material.io/components/cards): top-level cards are
+   Elevated (level 1 shadow, no outline); a card inside a card is Filled or Outlined, never elevated. */
+:root:not([data-theme="dark"]) {
+  --md-card-elevation: 0 1px 2px rgba(0, 0, 0, .3), 0 1px 3px 1px rgba(0, 0, 0, .15);
+  --md-card-filled: #E3E9ED;
+  --md-card-outline: #C3CDD2;
+  /* Segmented list items: white on the off-white page surface. */
+  --md-list-item: #FFFFFF;
+}
+:root:not([data-theme="dark"]) :is(.card, .about-panel, .log-table-wrap, .data-table-wrap, .weekly-table-wrap, .push-window) {
+  background: var(--md-surface-high);
+  border: 0;
+  box-shadow: var(--md-card-elevation);
+}
+/* Outlined: nested containers that hold form controls or a document preview. */
+:root:not([data-theme="dark"]) :is(.card, .about-panel) :is(.card, .push-window, .weekly-slot) {
+  background: var(--md-surface-high);
+  border: 1px solid var(--md-card-outline);
+  box-shadow: none;
+}
+/* Filled: nested read-only content blocks. */
+:root:not([data-theme="dark"]) :is(.card, .about-panel) :is(.swap-side, .push-section) {
+  background: var(--md-card-filled);
+  border: 0;
+  box-shadow: none;
+}
+
+/* Dark-mode cards are Material 3 Outlined: surface fill, 1px outline-variant, no shadow.
+   Re-pointing surface-high inside the card keeps floating-label masks matched to the new fill. */
+[data-theme="dark"] :is(.card, .about-panel, .log-table-wrap, .data-table-wrap, .weekly-table-wrap, .push-window) {
+  --md-surface-high: var(--md-surface);
+  --schedule-surface-high: var(--md-surface);
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  box-shadow: none;
+}
+
+/* Material 3 checkbox (m3.material.io/components/checkbox): 18px container, 2px corners, 2px outline,
+   40px circular state layer. Selecting fills the container, then the mark is drawn left to right.
+   Switches and the filter-chip icons keep their own look. */
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input) {
+  -webkit-appearance: none; appearance: none;
+  position: relative; box-sizing: border-box; flex: 0 0 18px;
+  width: 18px; height: 18px; min-width: 0; min-height: 0; padding: 0;
+  border: 2px solid var(--md-on-surface-variant); border-radius: 2px;
+  background: transparent; outline: 0; cursor: pointer;
+  transition: background-color 150ms cubic-bezier(.2, 0, 0, 1), border-color 150ms cubic-bezier(.2, 0, 0, 1);
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::before {
+  content: ""; position: absolute; inset: -13px; border-radius: 50%;
+  background: var(--md-on-surface); opacity: 0; pointer-events: none;
+  transition: opacity 150ms linear;
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::after {
+  content: ""; position: absolute; inset: -2px;
+  background: var(--md-on-primary);
+  --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M4 9.4l3.4 3.4L14 5.8' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E");
+  -webkit-mask: var(--check-mark) center / contain no-repeat; mask: var(--check-mark) center / contain no-repeat;
+  clip-path: inset(0 100% 0 0); opacity: 0;
+  transition: opacity 100ms linear, clip-path 0s 100ms;
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):is(:checked, :indeterminate) {
+  background: var(--md-primary); border-color: var(--md-primary);
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):is(:checked, :indeterminate)::before { background: var(--md-primary); }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):is(:checked, :indeterminate)::after {
+  clip-path: inset(0); opacity: 1;
+  transition: clip-path 200ms cubic-bezier(.2, 0, 0, 1) 80ms, opacity 0s 80ms;
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):indeterminate::after {
+  --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M4.5 9h9' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E");
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):hover:not(:checked, :indeterminate, :disabled) { border-color: var(--md-on-surface); }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):hover::before { opacity: .08; }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):is(:focus-visible, :active)::before { opacity: .12; }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):disabled { opacity: .38; cursor: default; }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):disabled::before { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input),
+  :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::before,
+  :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::after { transition: none; }
+}
+
+/* Wiki containers nested inside the about panel use outlined white surfaces. */
+:root:not([data-theme="dark"]) #wikiPanel :is(.wiki-tile, .wiki-page, .wiki-feature-list) {
+  background: #FFFFFF;
+  border: 1px solid var(--md-card-outline);
+  box-shadow: none;
+}
+:root:not([data-theme="dark"]) #wikiPanel :is(.wiki-feature, .wiki-note) {
+  background: #FFFFFF;
+}
+
+/* Daily scheduling: elevated outer card and outlined nested cards. */
+:root:not([data-theme="dark"]) .card.weekly-config {
+  background: #FFFFFF;
+  border: 0;
+  box-shadow: var(--md-card-elevation);
+}
+:root:not([data-theme="dark"]) .weekly-config .weekly-slot {
+  background: #FFFFFF;
+  border: 1px solid var(--md-card-outline);
+  box-shadow: none;
+}
+[data-theme="dark"] .weekly-config .weekly-slot {
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  box-shadow: none;
+}
+
+:root { --field-h: 42px; }
+/* Material 3 outlined text fields. Native pickers and form semantics are preserved. */
+:root body :is(input, textarea, select):not([type=checkbox], [type=radio], [type=range], [type=file], [type=hidden], [type=submit], [type=button], [type=color]) {
+  box-sizing: border-box;
+  border: 1px solid var(--md-outline);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--md-on-surface);
+  padding: 9px 12px;
+  font-size: 12px;
+  line-height: 18px;
+  outline: none;
+  box-shadow: none;
+}
+:root body :is(input, select):not([type=checkbox], [type=radio], [type=range], [type=file], [type=hidden], [type=submit], [type=button], [type=color]) { height: 42px; min-height: 42px; }
+:root body textarea { min-height: 72px; resize: vertical; }
+:root body select:not([multiple]) { padding-right: calc(var(--select-chevron-inset) + 18px); }
+:root body :is(input, textarea, select):not(:disabled):hover { border-color: var(--md-on-surface); }
+:root body :is(input, textarea, select):not([type=checkbox], [type=radio], [type=range], [type=file], [type=hidden]):focus {
+  border-color: var(--md-primary);
+  outline: 1px solid var(--md-primary);
+  outline-offset: -2px;
+  background: transparent;
+}
+:root body :is(input, textarea, select)[aria-invalid=true] { border-color: var(--md-error); }
+:root body :is(input, textarea, select):disabled { opacity: .38; }
+:root body .m3-outlined-label { position: relative; display: block; padding: 0; }
+:root body .m3-outlined-label > :is(input, textarea, select) { display: block; width: 100%; margin: 0; }
+:root body .m3-field-caption {
+  position: absolute; z-index: 1; top: 21px; left: 9px;
+  max-width: calc(100% - 18px); padding: 0 3px;
+  transform: translateY(-50%); font-size: 12px; line-height: 18px;
+  background: transparent; color: var(--md-on-surface-variant);
+  pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  transition: top 150ms ease, font-size 150ms ease, color 150ms ease;
+}
+:root body .m3-outlined-label:focus-within > .m3-field-caption { color: var(--md-primary); }
+:root body .outlined-field > span {
+  left: 9px; top: 21px; padding: 0 3px; font-size: 12px;
+}
+:root body .outlined-field input:focus + span,
+:root body .outlined-field input:not(:placeholder-shown) + span,
+:root body .outlined-field input:-webkit-autofill + span {
+  transform: translateY(-50%) translateY(-28px) scale(.75);
+  background: var(--md-surface-high);
+}
+:root body .outlined-field.password-field input { padding-right: 39px; }
+:root body .outlined-field > select + span {
+  top: 0;
+  transform: translateY(-50%) scale(.75);
+  background: var(--md-surface-high);
+}
+:root body .outlined-field > select:focus + span { color: var(--md-primary); }
+
+/* Rest inside an empty field, then float on focus or when it has a value. */
+:root body .m3-outlined-label:focus-within > .m3-field-caption,
+:root body .m3-outlined-label:has(> input:not(:placeholder-shown)) > .m3-field-caption,
+:root body .m3-outlined-label:has(> textarea:not(:placeholder-shown)) > .m3-field-caption,
+:root body .m3-outlined-label:has(> select option:checked:not([value=""])) > .m3-field-caption {
+  top: 0; font-size: 9px; line-height: 12px; background: transparent;
+}
+:root body .m3-outlined-label:not(:focus-within) > :is(input, textarea)::placeholder { color: transparent; }
+:root body .outlined-field > select + span {
+  top: 21px; transform: translateY(-50%); background: transparent;
+}
+:root body .outlined-field:focus-within > select + span,
+:root body .outlined-field:has(> select option:checked:not([value=""])) > select + span {
+  top: 0; transform: translateY(-50%) scale(.75); background: var(--md-surface-high);
+}
+@media(prefers-reduced-motion:reduce) {
+  :root body .m3-field-caption { transition: none; }
+}
+
+:root:not([data-theme="dark"]) #fieldBoard .field-person {
+  border: 1px solid currentColor;
+  box-shadow: none;
+}
+:root:not([data-theme="dark"]) #fieldBoard .field-person.done {
+  background: var(--schedule-primary-container, #cfe7fb);
+}
+:root:not([data-theme="dark"]) #fieldBoard .field-person.missing {
+  background: var(--schedule-error-container, #ffdcdc);
+}
+
+/* Data management: one outer card, outlined children and a filled table header. */
+#dataPage .data-layout {
+  --data-card-inset: 16px;
+  padding: var(--data-card-inset);
+  border-radius: 32px;
+  background: var(--md-surface-high);
+  box-shadow: var(--md-card-elevation);
+}
+#dataPage .data-tables,
+:is(#dataPage .data-table-wrap, #logsPage .log-table-wrap) {
+  --md-radius-xl: 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 16px;
+  background: var(--md-surface-high);
+  box-shadow: none;
+}
+#dataPage .data-tables { --data-pad: 7px; }
+#dataPage .data-table-item { border-radius: 8px; }
+:is(#dataPage .data-table-wrap, #logsPage .log-table-wrap) {
+  padding: 7px; display: flex; flex-direction: column; overflow: hidden;
+}
+:is(#dataPage .data-table-scroll, #logsPage .log-table-scroll) {
+  flex: 1 1 auto; min-height: 0; min-width: 0;
+  overflow: auto; overscroll-behavior: none; border-radius: 8px;
+}
+/* 1px outline + 7px inset + 8px inner radius aligns the corner arcs. */
+:is(#dataPage #dataHead, #logsPage .log-table thead) {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--md-surface-high);
+}
+:is(#dataPage #dataHead, #logsPage .log-table thead) th {
+  position: static;
+  background: var(--md-surface-low);
+  color: var(--md-on-surface);
+}
+:is(#dataPage #dataHead, #logsPage .log-table thead) th:first-child { border-radius: 8px 0 0 8px; }
+:is(#dataPage #dataHead, #logsPage .log-table thead) th:last-child { border-radius: 0 8px 8px 0; }
+:is(#dataPage #dataHead, #logsPage .log-table thead) th:only-child { border-radius: 8px; }
+:is(#dataPage .data-table, #logsPage .log-table) td { vertical-align: middle; }
+#dataPage .data-table td.data-actions { display: table-cell; }
+#dataPage .data-action-buttons { display: flex; align-items: center; gap: 4.8px; }
+#dataPage .data-row { border-radius: 8px; }
+#dataPage .data-row:hover {
+  position: relative;
+  z-index: 1;
+  box-shadow: none;
+}
+#dataPage .data-row:not(.selected):hover td,
+#dataPage .data-table-item:not(.active):hover {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container, var(--md-on-surface));
+}
+#dataPage .data-table-item:hover { box-shadow: none; outline: none; }
+:is(#dataPage .data-row, #logsPage .log-table tbody tr):hover td:first-child { border-radius: 8px 0 0 8px; }
+:is(#dataPage .data-row, #logsPage .log-table tbody tr):hover td:last-child { border-radius: 0 8px 8px 0; }
+:is(#dataPage .data-table-scroll, #logsPage .log-table-scroll)::-webkit-scrollbar:vertical {
+  background: transparent;
+}
+:root:not([data-theme="dark"]) #dataPage .data-layout,
+:root:not([data-theme="dark"]) #dataPage .data-tables,
+:root:not([data-theme="dark"]) :is(#dataPage .data-table-wrap, #logsPage .log-table-wrap) {
+  --md-surface-high: #FFFFFF;
+  background: #FFFFFF;
+}
+:root:not([data-theme="dark"]) :is(#dataPage .data-tables, #dataPage .data-table-wrap, #logsPage .log-table-wrap) {
+  border: 1px solid var(--md-outline, #74777F);
+  outline: 1px solid var(--md-outline, #74777F);
+  outline-offset: -1px;
+  box-shadow: none;
+}
+[data-theme="dark"] #dataPage .data-layout {
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  box-shadow: none;
+}
+@media(max-width:650px) {
+  #dataPage .data-layout { --data-card-inset: 12px; border-radius: 28px; }
+}
+
+#logsPage .log-table-wrap { max-height: 60vh; }
+#logsPage .log-table-scroll { --data-bar: 10px; --data-head-h: 36px; }
+#logsPage .log-table tbody tr:hover td {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container, var(--md-on-surface));
+}
+
+/* Standard vertical menus share a continuous surface and rectangular state layers. */
+:root body .md-select-menu {
+  --md-menu-row-height: 40px;
+  --md-select-inner-radius: 4px;
+  min-width: 112px;
+  padding: 8px 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--md-surface-high);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 16%), 0 4px 12px rgb(0 0 0 / 12%);
+}
+:root body .md-select-option {
+  min-height: var(--md-menu-row-height);
+  height: var(--md-menu-row-height);
+  margin: 0;
+  padding: 0 12px;
+  border-radius: 0;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+:root body .md-select-list { scrollbar-width: none; }
+:root body .md-select-list::-webkit-scrollbar { display: none; }
+/* Search and results form two distinct groups. Eight results fit before scrolling. */
+:root body .md-select-menu.grouped {
+  padding: 2px;
+  gap: 4px;
+  border-radius: 22px;
+  background: transparent;
+  box-shadow: none;
+}
+:root body .md-select-menu.grouped .md-select-search:not([hidden]) {
+  box-sizing: border-box;
+  display: flex;
+  margin: 0;
+  padding: 12px;
+  border-radius: 20px 20px 12px 12px;
+  background: var(--md-surface-high);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 24%);
+}
+:root body .md-select-menu.grouped .md-select-search input {
+  height: 42px;
+  min-height: 42px;
+  padding-left: 12px;
+  padding-right: 36px;
+  text-indent: 20px;
+  transition: text-indent 150ms ease, outline-color 150ms ease;
+}
+:root body .md-select-menu.grouped .md-select-search:is(:focus-within, :has(input:not(:placeholder-shown))) input { text-indent: 0; }
+:root body .md-select-menu.grouped .md-select-search::before { left: 22px; }
+:root body .md-select-menu.grouped .md-select-search .search-clear { top: 12px; bottom: 12px; right: 12px; }
+:root body .md-select-menu.grouped .md-select-list {
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  max-height: calc(var(--md-menu-row-height) * 8 + 16px);
+  padding: 8px 0;
+  border-radius: 12px 12px 20px 20px;
+  background: var(--md-surface-high);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 24%);
+}
+:root body .md-select-menu.grouped .md-select-empty {
+  margin: 0;
+  padding: 12px;
+  background: var(--md-surface-high);
+  border-radius: 12px 12px 20px 20px;
+}
+:root body .md-select-menu.grouped .md-select-option {
+  margin: 0 4px;
+  border-radius: 12px;
+}
+
+/* Empty selects use their floating label as the resting placeholder. */
+:root body :is(.m3-outlined-label, .outlined-field):not(:focus-within) > select:has(option:checked[value=""]) {
+  color: transparent;
+}
+:root body .m3-outlined-label:has(> select:disabled) > .m3-field-caption { opacity: .38; }
+#swapForm > .hint { margin: 12px 0 20px; }
+#swapForm .swap-picker { gap: 16px; margin-bottom: 20px; }
+#swapForm .swap-picker > label { min-width: 0; }
+
+/* Cut the top stroke to the measured floating label width instead of painting over it. */
+:root body .m3-outlined-label:is(:focus-within,
+  :has(> input:not(:placeholder-shown)),
+  :has(> textarea:not(:placeholder-shown)),
+  :has(> select option:checked:not([value=""]))) > :is(input, textarea, select) {
+  clip-path: polygon(0 0, 9px 0, 9px 2px,
+    calc(9px + var(--m3-notch-width, 0px)) 2px,
+    calc(9px + var(--m3-notch-width, 0px)) 0,
+    100% 0, 100% 100%, 0 100%);
+}
+:root body .m3-outlined-label > .m3-field-caption { background: transparent; }
+/* Match the floating offset to the current 42px field height. */
+:root body .outlined-field input:focus + span,
+:root body .outlined-field input:not(:placeholder-shown) + span,
+:root body .outlined-field input:-webkit-autofill + span {
+  transform: translateY(-50%) translateY(-21px) scale(.75);
+}
+
+/* The control's top border and floating caption must share the label's origin. */
+:root body label.m3-outlined-label > :is(input, textarea, select),
+#settingsPage label.m3-outlined-label > :is(input, textarea, select) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+:root body .m3-outlined-label:is(:focus-within,
+  :has(> input:not(:placeholder-shown)),
+  :has(> textarea:not(:placeholder-shown)),
+  :has(> select option:checked:not([value=""]))) > .m3-field-caption {
+  top: 0;
+  transform: translateY(-50%);
+}

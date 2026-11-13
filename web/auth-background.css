@@ -1,7 +1,10 @@
 /* Soft portal light, using the association's blue and teal palette. */
 .auth-background {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   z-index: 0;
@@ -10,13 +13,47 @@
   background: #f6f9fc;
   contain: strict;
 }
+/* Static gradients are painted once; only their transforms animate. */
+.auth-background::before,
+.auth-background::after {
+  content: "";
+  position: absolute;
+  width: 85%;
+  height: 85%;
+  animation: auth-light-drift 28s ease-in-out infinite alternate;
+}
+.auth-background::before {
+  top: -10%;
+  left: -10%;
+  background: radial-gradient(ellipse at center, rgba(146, 205, 213, .9) 0%, rgba(146, 205, 213, .5) 35%, rgba(146, 205, 213, 0) 70%);
+}
+.auth-background::after {
+  right: -10%;
+  bottom: -10%;
+  background: radial-gradient(ellipse at center, rgba(153, 213, 245, .85) 0%, rgba(153, 213, 245, .45) 35%, rgba(153, 213, 245, 0) 70%);
+  animation-duration: 36s;
+  animation-direction: alternate-reverse;
+}
+@keyframes auth-light-drift {
+  from { transform: translate(0, 0); }
+  to { transform: translate(15%, 12%); }
+}
+.auth-background.is-paused::before,
+.auth-background.is-paused::after {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-background::before,
+  .auth-background::after { animation: none; }
+}
 .auth-background[hidden] { display: none !important; }
 body.auth-pending > .admin-board,
 body > #authCard,
 body > #memberAuth {
   position: relative;
   z-index: 1;
-  margin-block: auto;
+  margin-top: auto;
+  margin-bottom: auto;
   flex-shrink: 0;
-  box-shadow: 0 2px 4px #18607808, 0 18px 64px #18607812;
+  box-shadow: 0 2px 4px rgba(24, 96, 120, .03), 0 18px 64px rgba(24, 96, 120, .07);
 }
