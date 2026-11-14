@@ -24,13 +24,17 @@ function swapCard(item) {
   }
   card.append(grid);
   const actions = el('div', 'actions');
-  const remove = button('删除', 'delete', async () => {
-    if (!confirm(`确认删除 ${item.a.person} 与 ${item.b.person} 的调班记录？双方将恢复原班次。`)) return;
-    try {
-      await api('/api/admin/swaps/' + item.id, 'DELETE');
-      await loadSwaps();
-      $('swapStatus').textContent = '调班已删除，双方恢复原班次。';
-    } catch (err) { $('swapStatus').textContent = err.message; }
+  const remove = button('删除', 'delete', () => {
+    if (!item.deletable) return;
+    openDeleteConfirm({
+      title: '删除调班记录',
+      body: `${item.a.person}：${shiftLabel(item.a.shift)}\n${item.b.person}：${shiftLabel(item.b.shift)}\n删除后，双方将恢复原班次。`,
+      submit: () => api('/api/admin/swaps/' + item.id, 'DELETE'),
+      onDone: async () => {
+        await loadSwaps();
+        $('swapStatus').textContent = '调班已删除，双方恢复原班次。';
+      },
+    });
   });
   remove.disabled = !item.deletable;
   if (!item.deletable) remove.title = '已有班次开始，无法删除';

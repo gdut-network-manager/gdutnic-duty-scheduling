@@ -36,17 +36,20 @@
       const value = await api(test ? '/api/admin/sso/test' : '/api/admin/sso', test ? 'POST' : 'PUT', body());
       if (test) field('ssoConfigStatus').textContent = value.message;
       else { paint(value); window.dispatchEvent(new Event('sso-configuration-changed')); field('ssoConfigStatus').textContent = value.enabled ? 'SSO 配置已保存，登录页已显示 GDUTNIC 登录入口。' : 'SSO 配置已保存，登录页不显示 GDUTNIC 登录入口。'; }
-    } catch (error) { field('ssoConfigStatus').textContent = error.message; }
+      return true;
+    } catch (error) { field('ssoConfigStatus').textContent = error.message; return {status:error.status}; }
     finally { field('ssoTest').disabled = field('ssoSave').disabled = false; }
   }
   window.loadSsoSettings = async () => {
+    if (window.settingsIsDirty?.('ssoConfigForm')) return;
     field('ssoFields').disabled = true;
     field('ssoConfigStatus').textContent = '正在读取 SSO 配置…';
-    try { paint(await api('/api/admin/sso')); field('ssoConfigStatus').textContent = ''; }
+    try { paint(await api('/api/admin/sso')); field('ssoConfigStatus').textContent = ''; window.markSettingsClean?.('ssoConfigForm'); }
     catch (error) { field('ssoConfigStatus').textContent = error.message; }
     // Re-enable even after a failed read, so the operator can retry or save.
     finally { field('ssoFields').disabled = false; }
   };
+  window.saveSsoSettings = () => action(false);
   field('ssoClientType').addEventListener('change', updateFields);
   field('ssoClaimSelect').addEventListener('change', updateFields);
   field('ssoTest').addEventListener('click', () => action(true));

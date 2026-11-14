@@ -10,6 +10,7 @@
     $('checkinAccessPeer').textContent = `当前来源 IP：${access.ip}；打卡：${access.checkin ? '允许' : '禁止'}；外勤：${access.field ? '允许' : '禁止'}。`;
   }
   window.loadCheckinAccess = async () => {
+    if (window.settingsIsDirty?.('checkinAccessForm')) return;
     if (loading) return;
     loading = true;
     const controls = [...form.elements];
@@ -18,7 +19,8 @@
     try {
       paint(await api('/api/admin/checkin-access'));
       $('checkinAccessStatus').textContent = '';
-    } catch (err) { $('checkinAccessStatus').textContent = err.message; }
+      window.markSettingsClean?.('checkinAccessForm');
+    } catch (err) { $('checkinAccessStatus').textContent = err.message; return {status:err.status}; }
     finally {
       // Re-enable even after a failed read, so the operator can retry or save.
       controls.forEach(control => control.disabled = false);
@@ -36,7 +38,8 @@
     try {
       paint(await api('/api/admin/checkin-access', 'PUT', body));
       $('checkinAccessStatus').textContent = '网络规则已保存。成员端会自动刷新按钮状态。';
-    } catch (err) { $('checkinAccessStatus').textContent = err.message; }
+      return true;
+    } catch (err) { $('checkinAccessStatus').textContent = err.message; return {status:err.status}; }
     finally { submit.disabled = false; }
   };
 })();

@@ -17,10 +17,13 @@ function specialCard(s) {
   }
   card.append(members);
   const actions = el('div', 'actions');
-  actions.append(button('编辑', 'secondary', () => openSpecial(s)), button('删除', 'delete', async () => {
-    if (!confirm(`确认删除 ${s.day} ${s.start} 的特殊排班及其签到记录？`)) return;
-    try { await api('/api/admin/special-schedules/' + s.id, 'DELETE'); await loadSpecials(); }
-    catch (err) { $('specialStatus').textContent = err.message; }
+  actions.append(button('编辑', 'secondary', () => openSpecial(s)), button('删除', 'delete', () => {
+    openDeleteConfirm({
+      title: '删除特殊排班',
+      body: `${s.day} ${s.start} — ${s.end < s.start ? '次日 ' : ''}${s.end}\n${s.note ? s.note + '\n' : ''}删除后，该排班及其签到记录将被永久删除，无法恢复。`,
+      submit: () => api('/api/admin/special-schedules/' + s.id, 'DELETE'),
+      onDone: loadSpecials,
+    });
   }));
   card.append(actions);
   return card;

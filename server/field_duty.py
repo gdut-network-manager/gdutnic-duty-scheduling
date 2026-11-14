@@ -78,8 +78,13 @@ def register(username, month=None):
     return {**member_status(username, month), 'created': True}
 
 
-def confirm(username, month=None):
-    """Confirm a pending registration: 1 → 2. Already-confirmed stays confirmed."""
+def confirm(username, month=None, *, actor):
+    """A different member confirms 1 → 2; a caller identity is mandatory."""
+    username, actor = str(username).strip(), str(actor or '').strip()
+    if not actor:
+        raise PermissionError('确认外勤必须指定操作账号')
+    if actor == username:
+        raise PermissionError('不能确认本人的外勤登记，请由其他成员确认')
     month = month or _month()
     with db.write() as conn:
         init(conn)
@@ -107,14 +112,17 @@ def reject_pending(username, month=None):
             'registered_at': None, 'manual': False}
 
 
-def pending(month=None):
+def pending(month=None, *, exclude_username=None):
     """Registrations waiting for confirmation (status 1), oldest first."""
     month = month or _month()
     with db.read() as conn:
         init(conn)
-        rows = conn.execute(
-            'SELECT username, registered_at FROM field_duty WHERE month=? AND status=?'
-            ' ORDER BY registered_at, username', (month, PENDING)).fetchall()
+        query = 'SELECT username, registered_at FROM field_duty WHERE month=? AND status=?'
+        args = [month, PENDING]
+        if exclude_username is not None:
+            query += ' AND username<>?'
+            args.append(exclude_username)
+        rows = conn.execute(query + ' ORDER BY registered_at, username', args).fetchall()
     return {'month': month,
             'items': [{'username': r['username'], 'registered_at': r['registered_at']} for r in rows]}
 

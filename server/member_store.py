@@ -1,4 +1,6 @@
 """Duty accounts. Administrators are accounts that carry the schedule/accounts/field permissions."""
+import hashlib
+
 from server import admin_store, db, permissions as perms_store, weekly_store
 
 INITIAL_PASSWORD = 'gg2017'
@@ -47,8 +49,12 @@ def create_missing(names, *, authorize=None):
     perms_store.ensure_defaults()
     created = 0
     with db.write() as conn:
-        existing = {row['username'] for row in conn.execute('SELECT username FROM member_accounts')}
+        accounts = conn.execute('SELECT username,student_id FROM member_accounts').fetchall()
+        existing = {row['username'] for row in accounts}
+        aliases = {row['student_id'] for row in accounts if row['student_id']}
         missing = [name for name in names if name not in existing]
+        if aliases.intersection(missing):
+            raise ValueError('姓名与已有账号学号冲突')
         # Hash once per run: every new account starts with the same initial password.
         if missing:
             if authorize is not None:
@@ -68,7 +74,7 @@ def create(name, password=None):
         raise ValueError('密码长度应为 6～128 位')
     perms_store.ensure_defaults()
     with db.write() as conn:
-        if conn.execute('SELECT username FROM member_accounts WHERE username=?', (name,)).fetchone():
+        if conn.execute('SELECT username FROM member_accounts WHERE username=? OR student_id=?', (name, name)).fetchone():
             raise ValueError('该姓名账号已存在')
         conn.execute('INSERT INTO member_accounts(username,password,active,permissions,group_id) VALUES(?,?,1,?,?)',
                      (name, admin_store._hash_password(password or INITIAL_PASSWORD),
@@ -91,7 +97,7 @@ def list_accounts():
     perms_store.ensure_defaults()
     with db.read() as conn:
         rows = [dict(r) for r in conn.execute(
-            'SELECT m.username,m.active,m.group_id,g.name AS group_name,g.permissions, '
+            'SELECT m.username,m.student_id,m.active,m.group_id,g.name AS group_name,g.permissions, '
             '(k.identity_key IS NOT NULL) AS sso_bound '
             'FROM member_accounts m LEFT JOIN permission_groups g ON g.id=m.group_id '
             'LEFT JOIN keycloak_links k ON k.username=m.username AND k.account_key=m.sso_id ORDER BY m.username')]
@@ -103,16 +109,69 @@ def list_accounts():
     return rows
 
 
+def _login_account(value):
+    """Fetch one unambiguous local identity, including the credentials to verify."""
+    from server import root_admin
+    if not value or len(value) > 64 or root_admin.is_root(value):
+        return None
+    with db.read() as conn:
+        rows = conn.execute(
+            'SELECT username,password,active FROM member_accounts '
+            'WHERE username=? OR student_id=? LIMIT 2', (value, value)).fetchall()
+    # Imported/externally edited data may contain conflicting aliases. Fail closed.
+    if len(rows) != 1 or root_admin.is_root(rows[0]['username']):
+        return None
+    return rows[0]
+
+
+def resolve_login_name(value):
+    """Canonical name for account-level login throttling; never a session identity."""
+    row = _login_account(value)
+    return row['username'] if row else value
+
+
+def _verified_version(row, password):
+    if row and row['active'] and admin_store._verify_password(password, row['password']):
+        return hashlib.sha256(row['password'].encode()).hexdigest()
+    return None
+
+
+def authenticate_login(value, password):
+    """Validate a username or student ID against the same fetched account record."""
+    row = _login_account(value)
+    version = _verified_version(row, password)
+    return (row['username'], version) if version else None
+
+
+def set_student_id(name, student_id):
+    with db.write() as conn:
+        _set_student_id(conn, name, student_id)
+
+
+def _set_student_id(conn, name, student_id):
+    from server import root_admin
+    _reject_root(name, '在用户管理中修改')
+    if not isinstance(student_id, str):
+        raise ValueError('学号必须为文本')
+    student_id = student_id.strip()
+    if len(student_id) > 64 or any(ord(c) < 32 or ord(c) == 127 for c in student_id):
+        raise ValueError('学号最多 64 字，不能包含控制字符')
+    if not conn.execute('SELECT username FROM member_accounts WHERE username=?', (name,)).fetchone():
+        raise LookupError('账号不存在')
+    if student_id and (root_admin.is_root(student_id) or conn.execute(
+            'SELECT username FROM member_accounts WHERE username<>? AND (username=? OR student_id=?)',
+            (name, student_id, student_id)).fetchone()):
+        raise ValueError('学号已被使用或与其他账号用户名冲突')
+    conn.execute('UPDATE member_accounts SET student_id=? WHERE username=?', (student_id, name))
+
+
 def authenticate(name, password):
     from server import root_admin
     if root_admin.is_root(name):
         return None  # the root identity only authenticates against its own file
     with db.read() as conn:
         row = conn.execute('SELECT password,active FROM member_accounts WHERE username=?', (name,)).fetchone()
-    if row and row['active'] and admin_store._verify_password(password, row['password']):
-        import hashlib
-        return hashlib.sha256(row['password'].encode()).hexdigest()
-    return None
+    return _verified_version(row, password)
 
 
 def verify(name, password):
@@ -122,7 +181,6 @@ def verify(name, password):
 def session_valid(name, version, *, use_cache=True):
     # Changing/resetting a password invalidates pre-existing member sessions. The cache
     # key includes the stored digest, so a new password simply misses the old entry.
-    import hashlib
     from server.security import MEMBER_SESSIONS
     from server import root_admin
     if root_admin.is_root(name):
@@ -140,7 +198,6 @@ def session_valid(name, version, *, use_cache=True):
 
 
 def session_version(name):
-    import hashlib
     from server import root_admin
     if root_admin.is_root(name):
         return root_admin.session_version()  # admin sessions follow the file, not the table

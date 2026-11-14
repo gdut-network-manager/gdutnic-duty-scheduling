@@ -1,13 +1,13 @@
-// A small radio-card dialog shared by the overview and field-duty pages.
+// Connected single-select status buttons shared by overview and field-duty pages.
 const EDIT_STATUS_CHOICES = {
   attendance: [
-    {id: 'normal', label: '准时'},
-    {id: 'late', label: '迟到'},
-    {id: 'absent', label: '旷班'},
+    {id: 'normal', label: '准时', icon: 'check-circle-outline'},
+    {id: 'late', label: '迟到', icon: 'clock-alert-outline'},
+    {id: 'absent', label: '旷班', icon: 'close-circle-outline'},
   ],
   field: [
-    {id: 'yes', label: '已参加外勤'},
-    {id: 'no', label: '未参加外勤'},
+    {id: 'yes', label: '已参加', icon: 'check-circle-outline'},
+    {id: 'no', label: '未参加', icon: 'close-circle-outline'},
   ],
 };
 
@@ -19,6 +19,9 @@ function openStatusEditor({title, meta, kind, current, extraNote, onSave}) {
   $('editStatusNote').textContent = extraNote || '';
   const box = $('editStatusOptions');
   box.replaceChildren();
+  box.dataset.kind = kind;
+  box.setAttribute('role', 'radiogroup');
+  box.setAttribute('aria-label', title);
   const choices = EDIT_STATUS_CHOICES[kind] || [];
   for (const choice of choices) {
     const label = el('label', 'status-option');
@@ -27,7 +30,9 @@ function openStatusEditor({title, meta, kind, current, extraNote, onSave}) {
     input.name = 'status';
     input.value = choice.id;
     input.checked = choice.id === current;
-    label.append(input, el('span', '', choice.label));
+    const content = el('span', 'status-option-content', choice.label);
+    content.dataset.icon = choice.icon;
+    label.append(input, content);
     box.append(label);
   }
   editStatusSubmit = onSave;

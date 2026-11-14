@@ -1,0 +1,164 @@
+/* Shared M3 motion system. Colors, typography, and resting card geometry stay unchanged. */
+:root {
+  --motion-spatial-fast: cubic-bezier(.175,.885,.32,1.275);
+  --motion-spatial: cubic-bezier(.2,0,0,1);
+  --motion-spatial-slow: cubic-bezier(.2,0,0,1);
+  --motion-effects: cubic-bezier(.2,0,0,1);
+  --motion-effects-fast: cubic-bezier(.2,0,0,1);
+  --motion-effects-slow: cubic-bezier(.2,0,0,1);
+  --motion-spatial-fast-duration: 350ms;
+  --motion-spatial-duration: 400ms;
+  --motion-spatial-slow-duration: 500ms;
+  --motion-effects-fast-duration: 150ms;
+  --motion-effects-duration: 200ms;
+  --motion-effects-slow-duration: 300ms;
+  /* The registration/check-in button keeps its original ease-out curve:
+     its arrow/circle sweep is a single long gesture, not a spring. */
+  --animated-button-ease: cubic-bezier(.23, 1, .32, 1);
+  --animated-button-move-duration: 800ms;
+  --animated-button-state-duration: 600ms;
+}
+:root[data-motion="full"] :is(.btn,.ga-nav-item,.md-select-option,.permission-option,.permission-group-summary,.history-item,.segment) {
+  transition: background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+    color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+    box-shadow var(--motion-effects-duration) var(--motion-effects),
+    border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
+}
+:root[data-motion="full"] :is(.btn,.ga-nav-item)::after { transition: opacity 150ms linear; }
+/* Selected connected buttons round fully; the pressed segment expands by 15%. */
+:root[data-motion="full"] .status-option {
+  transition: border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+    flex-grow var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+    background-color var(--motion-effects-duration) var(--motion-effects), color var(--motion-effects-duration) var(--motion-effects);
+}
+:root[data-motion="full"] .status-option:active { flex-grow:1.15; }
+/* Switch handle movement and size are independent of track color. */
+:root[data-motion="full"] .sso-toggle span { transition: background-color 150ms linear,border-color 150ms linear; }
+:root[data-motion="full"] .sso-toggle span::after {
+  transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+    width 250ms cubic-bezier(.2,0,0,1),height 250ms cubic-bezier(.2,0,0,1),margin 250ms cubic-bezier(.2,0,0,1),background-color 67ms linear;
+}
+.sso-toggle input:not(:checked) + span::after { transform:translateX(0) scale(.8); }
+.sso-toggle input:checked + span::after { transform:translateX(20px) scale(1); }
+.sso-toggle input:not(:disabled):active + span::after { transform:translateX(0) scale(1.2); }
+.sso-toggle input:not(:disabled):checked:active + span::after { transform:translateX(20px) scale(1.2); }
+:root[data-motion="full"] .md-switch-track::after { transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast); }
+:root[data-motion="full"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input) {
+  transition: background-color 150ms linear,border-color 150ms linear;
+}
+:root[data-motion="full"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):checked::after {
+  transition: clip-path 200ms cubic-bezier(.2,0,0,1) 50ms,opacity 50ms linear;
+}
+:root[data-motion="full"] :is(.outlined-field input,.outlined-field textarea,.m3-outlined-label input,.m3-outlined-label textarea,select) {
+  transition: outline-color 150ms linear,background-color 150ms linear,border-color 150ms linear;
+}
+:root[data-motion="full"] :is(.m3-field-caption,.outlined-field > span) {
+  transition: top 150ms cubic-bezier(.2,0,0,1),transform 150ms cubic-bezier(.2,0,0,1),color 150ms linear,background-color 150ms linear;
+}
+:root[data-motion="full"] .member-search input { transition: text-indent 200ms cubic-bezier(.2,0,0,1),outline-color 150ms linear; }
+:root[data-motion="full"] .member-search::before,
+:root[data-motion="full"] .search-clear { transition: opacity 150ms linear,visibility 150ms; }
+/* Native dialog lifecycle stays synchronous; discrete transitions retain the top layer on exit. */
+:root[data-motion="full"] dialog {
+  opacity:0; transform:translateY(-50px);
+  transition: opacity 150ms linear,transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),overlay var(--motion-spatial-fast-duration) allow-discrete,display var(--motion-spatial-fast-duration) allow-discrete;
+}
+:root[data-motion="full"] dialog[open] {
+  opacity:1; transform:translateY(0);
+  transition: opacity 50ms linear,transform var(--motion-spatial-duration) var(--motion-spatial),overlay var(--motion-spatial-duration) allow-discrete,display var(--motion-spatial-duration) allow-discrete;
+}
+:root[data-motion="full"] dialog::backdrop {
+  background-color:rgb(0 0 0 / .32); opacity:0;
+  transition:opacity 150ms linear,overlay 150ms allow-discrete,display 150ms allow-discrete;
+}
+:root[data-motion="full"] dialog[open]::backdrop { opacity:1;transition-duration:var(--motion-effects-duration); }
+@starting-style {
+  :root[data-motion="full"] dialog[open] { opacity:0;transform:translateY(-50px); }
+  :root[data-motion="full"] dialog[open]::backdrop { opacity:0; }
+}
+:root[data-motion="full"] dialog[open] :is(.section-head,form > label,form > .hint) { animation:m3-dialog-content 250ms linear both; }
+:root[data-motion="full"] dialog[open] :is(form > button[type=submit],.delete-confirm-actions,.member-state-actions,.member-password-actions) { animation:m3-dialog-actions 300ms linear both; }
+@keyframes m3-dialog-content { 0%,20% {opacity:0;} 100% {opacity:1;} }
+@keyframes m3-dialog-actions { 0%,50% {opacity:0;} 100% {opacity:1;} }
+/* The JS menu lifecycle provides surface clipping and item stagger, without text scaling. */
+:root[data-motion="full"] .md-select-menu { transition:none;transform:none; }
+:root[data-motion="full"] .md-select-menu.open { opacity:1;transform:none; }
+:root[data-motion="full"] details { interpolate-size:allow-keywords; }
+@supports (content-visibility: hidden) {
+  :root[data-motion="full"] details::details-content {
+    block-size:0;overflow:clip;
+    transition:block-size var(--motion-spatial-duration) var(--motion-spatial),content-visibility var(--motion-spatial-duration) allow-discrete;
+  }
+  :root[data-motion="full"] details[open]::details-content { block-size:auto; }
+}
+:root[data-motion="full"] :is(.wiki-page,.permission-branch) > summary::after { transition:transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast); }
+:root[data-motion="full"] :is(.push-column,.permission-tag) { transition:background-color 150ms linear,color 150ms linear; }
+@media(max-width:800px) {
+  :root[data-motion="full"] .ga-nav { transition:transform var(--motion-spatial-duration) var(--motion-spatial),visibility 0s linear var(--motion-spatial-duration); }
+  :root[data-motion="full"] .ga-app.nav-open .ga-nav { transition-delay:0s; }
+  :root[data-motion="full"] .nav-scrim { transition:opacity var(--motion-effects-duration) linear; }
+}
+/* Idle buttons keep their hover emphasis; committed states remain locked.
+   This control deliberately stays on the traditional ease-out curve instead of the
+   shared expressive springs: it animates a sweep, not a spatial retarget. */
+:root[data-motion="full"] .animated-button {
+  transition:background-color var(--animated-button-state-duration) var(--animated-button-ease),color var(--animated-button-state-duration) var(--animated-button-ease),border-radius var(--animated-button-state-duration) var(--animated-button-ease),box-shadow var(--animated-button-state-duration) var(--animated-button-ease);
+}
+.animated-button:not(.registered):not(.pending):not(:disabled) .circle {
+  width:220px;height:220px;opacity:0;transform:translate(-50%,-50%) scale(.09);
+  transition:transform var(--animated-button-move-duration) var(--animated-button-ease),opacity var(--animated-button-move-duration) var(--animated-button-ease);
+}
+.animated-button:not(.registered):not(.pending):not(:disabled):hover .circle,
+.animated-button:not(.registered):not(.pending):not(:disabled):focus-visible .circle {
+  opacity:1;transform:translate(-50%,-50%) scale(1);
+}
+.animated-button:not(.registered):not(.pending):not(:disabled):hover,
+.animated-button:not(.registered):not(.pending):not(:disabled):focus-visible {
+  border-radius:12px;box-shadow:0 0 0 4px var(--schedule-warning-outline, #f5c518);
+  color:var(--schedule-on-warning-container, #7a5b00);
+}
+.animated-button.check-in-button:not(.registered):not(:disabled):hover,
+.animated-button.check-in-button:not(.registered):not(:disabled):focus-visible {
+  color:var(--schedule-on-success-container, #1f5b25);
+  box-shadow:0 0 0 4px var(--schedule-success-outline, #a7dfa7);
+}
+.animated-button:not(.registered):not(.pending):not(:disabled) svg { fill:currentColor; }
+:root[data-motion="full"] .animated-button :is(svg,.text) { transition:transform var(--animated-button-move-duration) var(--animated-button-ease); }
+.animated-button .arr-1 { right:16px;transform:translateX(0); }
+.animated-button .arr-2 { left:16px;transform:translateX(-64px); }
+.animated-button:not(.registered):not(.pending):not(:disabled):hover .arr-1 { right:16px;transform:translateX(64px); }
+.animated-button:not(.registered):not(.pending):not(:disabled):hover .arr-2 { left:16px;transform:translateX(0); }
+.animated-button:not(.registered):not(.pending):not(:disabled):active { scale:.97; }
+/* Last rule protects the OS policy even against older, more specific animation rules. */
+:root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
+  animation-duration:.01ms !important;animation-delay:0ms !important;animation-iteration-count:1 !important;
+  transition-duration:0s !important;transition-delay:0s !important;scroll-behavior:auto !important;
+}
+.m3-ripple-surface { position:absolute;inset:0;overflow:hidden;border-radius:inherit;pointer-events:none; }
+.m3-ripple-ink { position:absolute;display:block;border-radius:50%;background:currentColor;opacity:.12;pointer-events:none; }
+
+:root[data-motion="full"] .btn:not(.icon-btn):not(:disabled):active { border-radius:8px; }
+:root[data-motion="full"] :is(.theme-toggle,.nav-toggle):active { border-radius:12px; }
+/* M3 switch handle sizes: 16px unselected, 24px selected, 28px pressed. */
+.sso-toggle span { position:relative; }
+.sso-toggle span::after { position:absolute;left:2px;top:2px;width:24px;height:24px;margin:0; }
+.sso-toggle input:not(:checked) + span::after { transform:translateX(0) scale(.666667); }
+.sso-toggle input:checked + span::after { transform:translateX(20px) scale(1); }
+.sso-toggle input:not(:disabled):active + span::after { transform:translateX(0) scale(1.166667); }
+.sso-toggle input:not(:disabled):checked:active + span::after { transform:translateX(20px) scale(1.166667); }
+:root[data-motion="full"] :is(.admin-board,.ga-app) {
+  transition:opacity var(--motion-effects-slow-duration) var(--motion-effects-slow),
+    transform var(--motion-spatial-duration) var(--motion-spatial);
+}
+
+/* Non-spatial changes settle without overshoot; position/shape use spatial springs. */
+:root[data-motion="full"] :is(.btn,.ga-nav-item)::after {
+  transition:opacity var(--motion-effects-fast-duration) var(--motion-effects-fast);
+}
+:root[data-motion="full"] .sso-toggle span {
+  transition:background-color var(--motion-effects-duration) var(--motion-effects),border-color var(--motion-effects-duration) var(--motion-effects);
+}
+:root[data-motion="full"] :is(.m3-field-caption,.outlined-field > span) {
+  transition:top var(--motion-spatial-fast-duration) var(--motion-spatial-fast),transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),color var(--motion-effects-fast-duration) var(--motion-effects-fast),background-color var(--motion-effects-fast-duration) var(--motion-effects-fast);
+}
+:root[data-motion="full"] dialog:not([open]) { pointer-events:none; }

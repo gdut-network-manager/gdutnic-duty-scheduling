@@ -1,5 +1,6 @@
 // Attendance window: mirrors the server's early/late/absent minute thresholds.
 async function loadRules() {
+  if (window.settingsIsDirty?.('rulesForm')) return;
   $('rulesStatus').textContent = '正在加载设置…';
   try {
     const rules = await api('/api/admin/rules');
@@ -7,6 +8,7 @@ async function loadRules() {
       $('rulesForm').elements[key].value = rules[key];
     }
     $('rulesStatus').textContent = '';
+    window.markSettingsClean?.('rulesForm');
   } catch (err) {
     $('rulesStatus').textContent = err.message;
     if (err.status === 401) $('rulesStatus').textContent = '登录状态已失效，请重新登录。';
@@ -31,7 +33,8 @@ $('rulesForm').onsubmit = async e => {
     rules = saved;
     window.announceCheckinSettings?.();
     $('rulesStatus').textContent = '值班时间设置已保存，签到页面会自动使用新规则。';
-  } catch (err) { $('rulesStatus').textContent = err.message; }
+    return true;
+  } catch (err) { $('rulesStatus').textContent = err.message; return {status:err.status}; }
   finally { submit.disabled = false; }
 };
 
@@ -61,10 +64,12 @@ function paintClockNow(iso) {
 }
 
 async function loadClock() {
+  if (window.settingsIsDirty?.('clockForm')) return;
   try {
     const state = await api('/api/admin/clock');
     syncClock(state);
     renderClock(state);
+    window.markSettingsClean?.('clockForm');
   } catch (err) { $('clockStatus').textContent = err.message; }
 }
 
@@ -95,7 +100,8 @@ $('clockForm').onsubmit = async e => {
     $('clockStatus').textContent = automatic
       ? '已恢复自动设置，使用真实时间。'
       : `已设为手动时间，从 ${state.date} ${String(state.hour).padStart(2, '0')}:${String(state.minute).padStart(2, '0')}:00 开始计时。`;
-  } catch (err) { $('clockStatus').textContent = err.message; }
+    return true;
+  } catch (err) { $('clockStatus').textContent = err.message; return {status:err.status}; }
   finally { submit.disabled = false; }
 };
 
@@ -154,8 +160,10 @@ $('rootPasswordForm').onsubmit = async e => {
     await api('/api/admin/root-password', 'POST', {password});
     form.reset();
     status.textContent = '密码已更新，请使用新密码重新登录。';
+    return true;
   } catch (err) {
     status.textContent = err.message;
+    return {status:err.status};
   } finally {
     button.disabled = false;
   }
@@ -176,10 +184,12 @@ function paintSmtp(data) {
 }
 
 async function loadSmtp() {
+  if (window.settingsIsDirty?.('smtpForm')) return;
   $('smtpStatus').textContent = '正在加载 SMTP 配置…';
   try {
     paintSmtp(await api('/api/admin/smtp'));
     $('smtpStatus').textContent = '';
+    window.markSettingsClean?.('smtpForm');
   } catch (err) {
     $('smtpStatus').textContent = err.message;
   }
@@ -205,8 +215,10 @@ $('smtpForm').onsubmit = async e => {
     if ($('smtpPassword').value) body.password = $('smtpPassword').value;
     paintSmtp(await api('/api/admin/smtp', 'POST', body));
     $('smtpStatus').textContent = 'SMTP 设置已保存。';
+    return true;
   } catch (err) {
     $('smtpStatus').textContent = err.message;
+    return {status:err.status};
   } finally {
     submit.disabled = false;
   }
@@ -223,19 +235,22 @@ $('smtpTest').onclick = async () => {
     $('smtpStatus').textContent = `测试邮件已发送到 ${result.to}，请检查收件箱。`;
   } catch (err) {
     $('smtpStatus').textContent = err.message;
+    return {status:err.status};
   } finally {
     button.disabled = false;
   }
 };
 
 async function loadSessionTimeout() {
+  if (window.settingsIsDirty?.('sessionTimeoutForm')) return;
   try {
     const value = await api('/api/admin/session-timeout');
     for (const key of ['member_minutes', 'admin_minutes', 'member_response_seconds', 'admin_response_seconds']) $('sessionTimeoutForm').elements[key].value = value[key];
     $('sessionTimeoutStatus').textContent = '';
-  } catch (error) { $('sessionTimeoutStatus').textContent = error.message; }
+    window.markSettingsClean?.('sessionTimeoutForm');
+  } catch (error) { $('sessionTimeoutStatus').textContent = error.message; return {status:error.status}; }
 }
-$('sessionTimeoutForm').addEventListener('submit', async event => {
+$('sessionTimeoutForm').onsubmit = async event => {
   event.preventDefault();
   const form = event.currentTarget, submit = form.querySelector('[type=submit]');
   submit.disabled = true;
@@ -248,6 +263,7 @@ $('sessionTimeoutForm').addEventListener('submit', async event => {
     });
     $('sessionTimeoutStatus').textContent = '自动退出设置已保存，对当前登录会话立即生效。';
     window.dispatchEvent(new Event('session-timeout-changed'));
-  } catch (error) { $('sessionTimeoutStatus').textContent = error.message; }
+    return true;
+  } catch (error) { $('sessionTimeoutStatus').textContent = error.message; return {status:error.status}; }
   finally { submit.disabled = false; }
-});
+};
