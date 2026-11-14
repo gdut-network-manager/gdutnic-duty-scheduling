@@ -43,7 +43,7 @@
   // Any action in the drawer closes it (a page, or a button that opens a dialog); only the
   // theme switch leaves it open, so the result of switching stays visible.
   nav.addEventListener('click', event => {
-    if (event.target.closest('button') && !event.target.closest('.theme-toggle')) setOpen(false);
+    if (event.target.closest('button, a.ga-external-link') && !event.target.closest('.theme-toggle')) setOpen(false);
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && isOpen()) setOpen(false, { focus: true });

@@ -122,3 +122,5 @@ h2[data-icon]::before, h3[data-icon]::before { color: var(--md-primary); }
 [data-icon="close-circle-outline"] { --component-icon: url("/icon/components/close-circle-outline.svg"); }
 
 [data-icon="check"] { --component-icon: url("/icon/components/check.svg"); }
+
+[data-icon="open-in-new"] { --component-icon:url("/icon/components/open-in-new.svg"); }

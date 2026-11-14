@@ -1419,3 +1419,8 @@ body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
 }
 
 #editStatusOptions[data-kind="field"] { width:240px;max-width:100%; }
+
+.ga-external-link { gap:8px;text-decoration:none; }
+.ga-external-link > span:first-child { min-width:0; }
+.ga-external-icon { display:inline-flex;align-items:center;margin-left:auto;flex-shrink:0; }
+.ga-external-icon[data-icon]::before { width:16px;height:16px;flex-basis:16px; }
