@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS member_accounts (
+ student_id TEXT NOT NULL DEFAULT '',
  username TEXT PRIMARY KEY, password TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
  permissions TEXT NOT NULL DEFAULT '', group_id TEXT NOT NULL DEFAULT '', sso_id TEXT NOT NULL DEFAULT '', sso_auto_link_blocked INTEGER NOT NULL DEFAULT 0
 );
@@ -92,7 +93,8 @@ CREATE TABLE IF NOT EXISTS weekly_instances (
 """
 # Added after the initial release; existing databases need an in-place upgrade.
 COLUMNS = {'shifts': {'special': 'INTEGER NOT NULL DEFAULT 0'},
-           'member_accounts': {'permissions': "VARCHAR(191) NOT NULL DEFAULT ''",
+           'member_accounts': {'student_id': "VARCHAR(64) NOT NULL DEFAULT ''",
+                               'permissions': "VARCHAR(191) NOT NULL DEFAULT ''",
                                'group_id': "VARCHAR(64) NOT NULL DEFAULT ''",
                                'sso_id': "VARCHAR(64) NOT NULL DEFAULT ''",
                                'sso_auto_link_blocked': 'TINYINT NOT NULL DEFAULT 0'},

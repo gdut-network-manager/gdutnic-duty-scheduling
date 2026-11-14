@@ -6,13 +6,15 @@
   <title>网络服务协会</title>
   <link rel="icon" href="/icon/gdutnic.png">
   <meta name="theme-color" content="#1B6D88">
-<script src="/static/theme.js"></script>
+<script src="/static/browser-motion.js"></script><script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/schedule.css">
   <link rel="stylesheet" href="/static/component-icons.css">
 <link rel="stylesheet" href="/static/auth-background.css">
 <script src="/static/auth-background.js" defer></script>
 <link rel="stylesheet" href="/static/theme.css">
+<link rel="stylesheet" href="/static/motion.css">
+<script src="/static/motion.js" defer></script>
 </head>
 <body data-admin="true">
 <section id="authCard" class="admin-board">
@@ -46,7 +48,7 @@
       <button type="button" id="logsTab" class="ga-nav-item">查看日志</button>
       <button type="button" id="dataTab" class="ga-nav-item">数据管理</button>
       <button type="button" id="settingsTab" class="ga-nav-item">其他设置</button>
-      <button type="button" id="aboutTab" class="ga-nav-item">关于</button>
+      <button type="button" id="aboutTab" class="ga-nav-item">关于与帮助</button>
     </nav>
     <div class="panel-footer"><button id="logout" class="btn danger" data-icon="logout" hidden>退出登录</button></div>
   </aside>
@@ -92,7 +94,18 @@
       </section>
 
       <section id="aboutPage" hidden>
-        <div class="hero"><div><h1 data-icon="about">关于</h1></div></div>
+        <div class="hero"><div><h1 data-icon="about">关于与帮助</h1></div></div>
+        <article id="wikiPanel" class="about-panel wiki-panel">
+          <p id="wikiStatus" class="wiki-status" role="status">正在读取…</p>
+          <div id="wikiBody" hidden>
+            <p id="wikiPartial" class="wiki-status" hidden>只显示当前账号有权限使用的管理端页面和设置项。</p>
+            <details id="wikiOverviewBox" class="wiki-section wiki-overview" open>
+              <summary><h3>速览</h3><span id="wikiOverviewHint" class="wiki-count"></span></summary>
+              <div id="wikiOverview" class="wiki-tiles"></div>
+            </details>
+            <div id="wikiAreas"></div>
+          </div>
+        </article>
         <article class="about-panel">
           <header class="about-identity">
             <img src="/icon/gdutnic.png" width="64" height="64" alt="网络服务协会标志">
@@ -137,18 +150,7 @@ SOFTWARE.
 </pre></details>
           </footer>
         </article>
-        <article id="wikiPanel" class="about-panel wiki-panel">
-          <header class="wiki-head"><h2 data-icon="clipboard-text-outline">Wiki</h2><p>每个功能在哪里、做什么。</p></header>
-          <p id="wikiStatus" class="wiki-status" role="status">正在读取…</p>
-          <div id="wikiBody" hidden>
-            <p id="wikiPartial" class="wiki-status" hidden>只显示当前账号有权限使用的管理端页面和设置项。</p>
-            <details id="wikiOverviewBox" class="wiki-section wiki-overview" open>
-              <summary><h3>速览</h3><span id="wikiOverviewHint" class="wiki-count"></span></summary>
-              <div id="wikiOverview" class="wiki-tiles"></div>
-            </details>
-            <div id="wikiAreas"></div>
-          </div>
-        </article>
+
       </section>
 
       <section id="weeklyPage" hidden>
@@ -178,7 +180,7 @@ SOFTWARE.
           </div>
         </form>
         <div class="card publish-card">
-          <h2 data-icon="calendar-check-outline">生成排班</h2>
+          <h2>生成排班</h2>
           <p>按已保存的每周固定排班表匹配星期，在所选日期区间内生成班次。区间内已生成或时间冲突的班次会被新排班覆盖；已有人打卡的班次会跳过，不会覆盖签到记录。</p>
           <div class="publish-range">
             <label for="generateFrom">排班开始于<input id="generateFrom" type="date" required></label>
@@ -224,9 +226,6 @@ SOFTWARE.
 
       <section id="pushPage" hidden>
         <div class="hero"><div><h1 data-icon="email-outline">消息推送</h1><p>让每个完整周期的考勤情况，按时抵达收件箱。</p></div></div>
-        <div class="page-actions">
-          <button id="pushSave" class="btn primary" data-icon="content-save-outline">保存推送设置</button>
-        </div>
         <div class="card push-settings">
           <div class="section-head"><h2>发送计划</h2><label class="push-switch"><input id="pushEnabled" type="checkbox"><span>启用定时推送</span></label></div>
           <label for="pushAddress">目标邮箱</label>
@@ -235,10 +234,11 @@ SOFTWARE.
           <div class="push-plan"><label>推送频率<select id="pushWeeks"><option value="1">1 周 / 次</option><option value="2">2 周 / 次</option><option value="4">4 周 / 次</option></select></label><label>周日发件时间<input id="pushTime" type="time" value="09:00" required></label><div class="push-cutoff"><strong>周六 23:59 截止</strong><span>北京时间 · 按周日到周六汇总</span></div></div>
           <p id="pushNext" class="hint"></p><p id="pushSmtp" class="hint"></p>
           <p id="pushStatus" role="status" aria-live="polite"></p>
+          <div class="push-settings-actions"><button id="pushSave" class="btn primary" data-icon="content-save-outline">保存推送设置</button></div>
         </div>
-        <div class="section-head push-preview-head"><div><h2>邮件格式</h2><p class="hint">双击标题、开头或结尾编辑。勾选列以展示；短按列名排序，长按拖动调序。</p></div><label class="push-switch"><input id="pushSample" type="checkbox" checked><span>使用示例数据</span></label></div>
         <div class="push-window">
-          <div class="push-window-bar"><span id="pushPreviewRange">邮件预览</span><span id="pushPreviewBadge">示例数据 · 仅预览，不会发送</span></div>
+          <div class="section-head push-preview-head"><div><h2>邮件格式</h2><p class="hint">双击标题、开头或结尾编辑。勾选列以展示；短按列名排序，长按拖动调序。</p></div><label class="push-switch"><input id="pushSample" type="checkbox" checked><span>使用示例数据</span></label></div>
+          <p class="push-window-bar"><span id="pushPreviewRange">邮件预览</span> · <span id="pushPreviewBadge">示例数据 · 仅预览，不会发送</span></p>
           <div class="push-letter">
             <div id="pushTitle" class="push-editable push-title" tabindex="0" role="button" aria-label="双击编辑标题"></div>
             <div id="pushOpening" class="push-editable" tabindex="0" role="button" aria-label="双击编辑开头"></div>
@@ -269,6 +269,9 @@ SOFTWARE.
         <div class="members-toolbar">
           <label class="member-search" data-icon="magnify"><input id="memberSearch" type="search" placeholder="搜索姓名" autocomplete="off" aria-label="搜索用户"></label>
           <div class="members-toolbar-actions">
+            <button id="downloadStudentIds" class="btn tonal" data-icon="file-download-outline">下载学号名单</button>
+            <button id="importStudentIds" class="btn tonal" data-icon="file-upload-outline">导入学号名单</button>
+            <input id="studentIdsFile" type="file" accept=".csv,text/csv" hidden>
             <button id="addMember" class="btn primary" data-icon="account-plus-outline">添加账号</button>
             <button id="cleanupMembers" class="btn danger" data-icon="account-off-outline">清理多余用户</button>
           </div>
@@ -325,6 +328,10 @@ SOFTWARE.
 
       <section id="settingsPage" hidden>
         <div class="hero"><div><h1 data-icon="tune-variant">其他设置</h1><p>管理签到规则、打卡网络、SSO、无操作登录时限与系统设置。</p></div></div>
+        <div class="settings-save-dock">
+          <p id="settingsSaveAllStatus" role="status" aria-live="polite"></p>
+          <button id="settingsSaveAll" type="button" class="btn settings-save-fab" data-icon="content-save-outline" aria-label="保存所有设置" title="保存所有设置"></button>
+        </div>
         <form id="rulesForm" method="post" class="card rules-card">
           <h2 data-icon="clock-outline">值班时间</h2>
           <p class="hint">以下时间均相对于班次开始时间计算。</p>
@@ -512,6 +519,18 @@ SOFTWARE.
         </form>
       </dialog>
 
+      <dialog id="deleteConfirmDialog" class="delete-confirm-card" role="alertdialog" aria-labelledby="deleteConfirmTitle" aria-describedby="deleteConfirmBody">
+        <form id="deleteConfirmForm">
+          <h2 id="deleteConfirmTitle">确认删除</h2>
+          <p id="deleteConfirmBody"></p>
+          <p id="deleteConfirmStatus" role="alert"></p>
+          <div class="delete-confirm-actions">
+            <button type="button" id="cancelDeleteConfirm" class="btn tonal" data-icon="close" autofocus>取消</button>
+            <button type="submit" class="btn danger" data-icon="delete-outline">确认删除</button>
+          </div>
+        </form>
+      </dialog>
+
       <dialog id="dataDeleteDialog">
         <form id="dataDeleteForm">
           <div class="section-head"><h2>确认删除记录</h2><button type="button" id="closeDataDelete" class="btn tonal" data-icon="close">取消</button></div>
@@ -572,13 +591,52 @@ SOFTWARE.
         </form>
       </dialog>
 
+      <dialog id="studentImportDialog" class="delete-confirm-card student-import-card" aria-labelledby="studentImportTitle" aria-describedby="studentImportSummary">
+        <h2 id="studentImportTitle" data-icon="check-circle-outline">导入成功</h2>
+        <p id="studentImportSummary"></p>
+        <p id="studentImportNotes" class="hint"></p>
+        <div id="studentImportConflicts"></div>
+        <p id="studentImportStatus" role="alert"></p>
+        <div class="delete-confirm-actions student-import-actions">
+          <button type="button" id="confirmStudentImport" class="btn primary" data-icon="check">确认</button>
+          <button type="button" id="ignoreStudentImport" class="btn tonal" data-icon="close" hidden>忽略</button>
+          <button type="button" id="replaceStudentImport" class="btn danger" data-icon="swap-horizontal" hidden>替代</button>
+        </div>
+      </dialog>
+
+      <dialog id="memberStateDialog" class="member-state-card" aria-labelledby="memberStateTitle">
+        <div class="section-head"><h2 id="memberStateTitle">变更账号状态</h2><button type="button" id="closeMemberState" class="btn tonal" data-icon="close" autofocus>关闭</button></div>
+        <div class="member-state-row">
+          <div><strong id="memberStateEnabledLabel">启用账号</strong><p id="memberStateCurrent">账号已启用</p></div>
+          <label class="sso-toggle"><input id="memberStateActive" type="checkbox" role="switch" aria-labelledby="memberStateEnabledLabel" aria-describedby="memberStateHint"><span aria-hidden="true"></span></label>
+        </div>
+        <p id="memberStateHint" class="hint">切换后立即生效；停用后该账号无法登录。</p>
+        <p id="memberStateStatus" role="alert"></p>
+        <div class="member-state-actions">
+          <button type="button" id="deleteStateMember" class="btn danger" data-icon="delete-outline">删除账号</button>
+        </div>
+      </dialog>
+
+      <dialog id="memberStudentIdDialog">
+        <form id="memberStudentIdForm">
+          <div class="section-head"><h2 id="memberStudentIdTitle">更改学号</h2><button type="button" id="closeMemberStudentId" class="btn tonal" data-icon="close">关闭</button></div>
+          <label>学号<input name="student_id" type="text" maxlength="64" autocomplete="off"></label>
+          <p class="hint">可使用学号代替用户名登录，留空保存可清除学号。</p>
+          <p id="memberStudentIdStatus" role="alert"></p>
+          <button type="submit" class="btn primary" data-icon="content-save-outline">保存学号</button>
+        </form>
+      </dialog>
+
       <dialog id="memberPasswordDialog">
         <form id="memberPasswordForm">
           <div class="section-head"><h2 id="memberPasswordTitle">更改密码</h2><button type="button" id="closeMemberPassword" class="btn tonal" data-icon="close">关闭</button></div>
           <label>新密码<input name="password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required></label>
           <p class="hint">保存后该账号的旧登录会立即失效。</p>
           <p id="memberPasswordStatus" role="alert"></p>
-          <button type="submit" class="btn primary" data-icon="content-save-outline">保存密码</button>
+          <div class="member-password-actions">
+            <button type="submit" class="btn primary" data-icon="content-save-outline">保存密码</button>
+            <button type="button" id="resetMemberPassword" class="btn danger" data-icon="lock-reset">重置密码</button>
+          </div>
         </form>
       </dialog>
 
@@ -636,11 +694,14 @@ SOFTWARE.
 <script src="/static/weekly.js"></script>
 <script src="/static/about.js"></script>
 <script src="/static/weekly-import.js"></script>
+<script src="/static/delete-confirm.js"></script>
 <script src="/static/special.js"></script>
 <script src="/static/swaps.js"></script>
 <script src="/static/permission-tree.js"></script>
 <script src="/static/permission-groups.js"></script>
 <script src="/static/members.js"></script>
+<script src="/static/member-student-csv.js"></script>
+<script src="/static/settings-save-all.js"></script>
 <script src="/static/settings.js"></script>
 <script src="/static/checkin-access.js"></script>
 <script src="/static/sso-settings.js"></script>

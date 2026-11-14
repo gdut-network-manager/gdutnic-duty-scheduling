@@ -15,9 +15,10 @@ MAX_ATTEMPTS = 8
 WINDOW_SECONDS = 10 * 60
 
 # Duty accounts sign in on shared club devices and mistype often, so their limit is
-# looser: 50 failures from one source address, then a 5-minute cooldown.
+# looser: 50 failures against one canonical account, then a 5-minute cooldown.
 MEMBER_MAX_ATTEMPTS = 50
 MEMBER_WINDOW_SECONDS = 5 * 60
+MEMBER_IP_MAX_ATTEMPTS = MEMBER_MAX_ATTEMPTS * 6
 
 
 class AttemptLimiter:
@@ -70,6 +71,12 @@ class AttemptLimiter:
         with self._lock:
             self._hits.pop(key, None)
             self._blocked_until.pop(key, None)
+
+
+def member_login_account_key(name: str) -> str:
+    """Bound key size while keeping case-sensitive account identities distinct."""
+    import hashlib
+    return 'member:account:' + hashlib.sha256(name.encode('utf-8')).hexdigest()
 
 
 def client_key(request) -> str:

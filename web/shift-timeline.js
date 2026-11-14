@@ -102,7 +102,6 @@
   host.replaceChildren(svg);
   const prefix = host.id;
   let shifts=[], model, moving, currentLabel, endpointLabels=[], nameLabels=[], frameId=0, lastLabel='';
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let lastMotion=0;
   const canDraw = () => !document.hidden && host.clientWidth > 0;
 
@@ -214,7 +213,7 @@
     const now=shiftNow();
     // Rebuild infrequently; only two group transforms move between rebuilds.
     if (!model || Math.abs(now-model.now)>30*1000) rebuild(now);
-    else if (!reducedMotion.matches || now-lastMotion>=1000) { move(now); lastMotion=now; }
+    else if ((document.documentElement.dataset.motion !== 'reduced') || now-lastMotion>=1000) { move(now); lastMotion=now; }
     frameId=requestAnimationFrame(frame);
   }
   function refresh() {

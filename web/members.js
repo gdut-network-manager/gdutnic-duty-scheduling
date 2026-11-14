@@ -1,4 +1,4 @@
-let memberItems = [], deletingMember = '', memberMeta = {groups: [], me: '', can_grant: false};
+let memberItems = [], memberMeta = {groups: [], me: '', can_grant: false};
 let memberQuery = '';
 const unlinkingSso = new Set();
 const memberMatches = member => !memberQuery || member.username.toLowerCase().includes(memberQuery);
@@ -8,8 +8,8 @@ function renderMembers() {
   const visible = memberItems.filter(memberMatches);
   for (const member of visible) {
     const row = el('article', 'card member-account'), title = el('div');
-    title.append(el('h2', '', member.username), el('p', '', member.active ? '账号已启用' : '账号已停用'));
-    const tags = el('div', 'permission-tags');
+    title.append(el('h2', '', member.username), el('p', 'member-student-id', member.student_id || '\u00a0'), el('p', '', member.active ? '账号已启用' : '账号已停用'));
+    const tags = el('div', 'permission-tags' + (member.active ? '' : ' is-inactive'));
     tags.append(el('span', 'permission-tag', member.group_name || '会员'));
     if (member.sso_bound) tags.append(el('span', 'permission-tag', '已绑定 GDUTNIC'));
     title.append(tags);
@@ -17,23 +17,8 @@ function renderMembers() {
     actions.append(
       ...(memberMeta.can_grant ? [button('更改权限', 'secondary', () => openPermission(member))] : []),
       button('更改密码', 'secondary', () => openPassword(member)),
-      button('重置密码', 'secondary', async () => {
-        if (!confirm(`将「${member.username}」的密码重置为 gg2017？`)) return;
-        try { await api('/api/admin/members', 'PATCH', {username:member.username, reset_password:true}); $('membersStatus').textContent = '密码已重置，该用户需重新登录。'; }
-        catch (err) { $('membersStatus').textContent = err.message; }
-      }),
-      button(member.active ? '停用账号' : '启用账号', member.active ? 'secondary' : 'primary', async () => {
-        try { await api('/api/admin/members', 'PATCH', {username:member.username, active:!member.active}); await loadMembers(); }
-        catch (err) { $('membersStatus').textContent = err.message; }
-      }),
-      button('删除账号', 'delete', async () => {
-        if (deletingMember === member.username) return;
-        if (!confirm(`确认删除「${member.username}」的账号？该操作无法撤销，已有排班和签到记录会保留。`)) return;
-        deletingMember = member.username;
-        try { await api('/api/admin/members?username=' + encodeURIComponent(member.username), 'DELETE'); await loadMembers(); $('membersStatus').textContent = `已删除「${member.username}」的账号。`; }
-        catch (err) { $('membersStatus').textContent = err.message; }
-        finally { deletingMember = ''; }
-      })
+      button('更改学号', 'secondary', () => openStudentId(member)),
+      button('变更账号状态', 'delete', () => openMemberState(member))
     );
     if (member.sso_bound) actions.prepend(button('解绑SSO', 'delete', async () => {
       if (unlinkingSso.has(member.username)) return;
@@ -100,6 +85,7 @@ function openPermission(member) {
 $('permissionGroupSelect').onchange = updateMemberGroupPreview;
 
 function openPassword(member) {
+  if ($('memberPasswordForm').dataset.busy === 'true') return;
   $('memberPasswordForm').reset();
   $('memberPasswordTitle').textContent = `更改密码 · ${member.username}`;
   $('memberPasswordStatus').textContent = '';
@@ -155,21 +141,41 @@ $('permissionForm').onsubmit = async e => {
   finally { submit.disabled = false; }
 };
 
-$('memberPasswordForm').onsubmit = async e => {
-  e.preventDefault();
-  const form = e.currentTarget, submit = form.querySelector('[type=submit]');
-  submit.disabled = true;
+async function saveMemberPassword(reset = false) {
+  const form = $('memberPasswordForm');
+  if (form.dataset.busy === 'true') return;
+  const name = form.dataset.username;
+  if (reset && !confirm(`将「${name}」的密码重置为 gg2017？`)) return;
+  form.dataset.busy = 'true';
+  const buttons = form.querySelectorAll('button');
+  buttons.forEach(button => { button.disabled = true; });
+  $('memberPasswordStatus').textContent = '';
   try {
-    await api('/api/admin/members/password', 'PUT', {
-      username: form.dataset.username,
-      password: form.elements.password.value,
-    });
-    const name = form.dataset.username;
+    if (reset) {
+      await api('/api/admin/members', 'PATCH', {username: name, reset_password: true});
+    } else {
+      await api('/api/admin/members/password', 'PUT', {
+        username: name, password: form.elements.password.value,
+      });
+    }
     $('memberPasswordDialog').close();
-    $('membersStatus').textContent = `已更改「${name}」的密码，该账号需重新登录。`;
+    $('membersStatus').textContent = reset
+      ? `已将「${name}」的密码重置为 gg2017，该账号需重新登录。`
+      : `已更改「${name}」的密码，该账号需重新登录。`;
   } catch (err) { $('memberPasswordStatus').textContent = err.message; }
-  finally { submit.disabled = false; }
+  finally {
+    delete form.dataset.busy;
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+$('memberPasswordForm').onsubmit = e => {
+  e.preventDefault();
+  saveMemberPassword();
 };
+$('resetMemberPassword').onclick = () => saveMemberPassword(true);
+$('memberPasswordDialog').addEventListener('cancel', e => {
+  if ($('memberPasswordForm').dataset.busy === 'true') e.preventDefault();
+});
 
 $('cleanupMembers').onclick = async () => {
   if (!confirm('确认清理默认会员组中未出现在已保存的每周排班或任何已生成排班中的用户？删除账号无法撤销，已有排班和签到记录会保留。')) return;
@@ -180,4 +186,84 @@ $('cleanupMembers').onclick = async () => {
     $('membersStatus').textContent = `已清理 ${result.deleted} 个多余用户。`;
   } catch (err) { $('membersStatus').textContent = err.message; }
   finally { button.disabled = false; }
+};
+
+function openStudentId(member) {
+  const form = $('memberStudentIdForm');
+  form.reset();
+  form.dataset.username = member.username;
+  form.elements.student_id.value = member.student_id || '';
+  $('memberStudentIdTitle').textContent = `更改学号 · ${member.username}`;
+  $('memberStudentIdStatus').textContent = '';
+  $('memberStudentIdDialog').showModal();
+}
+$('closeMemberStudentId').onclick = () => $('memberStudentIdDialog').close();
+$('memberStudentIdForm').onsubmit = async e => {
+  e.preventDefault();
+  const form = e.currentTarget, submit = form.querySelector('[type=submit]');
+  submit.disabled = true;
+  try {
+    await api('/api/admin/members/student-id', 'PUT', {
+      username: form.dataset.username, student_id: form.elements.student_id.value.trim(),
+    });
+    $('memberStudentIdDialog').close();
+    await loadMembers();
+    $('membersStatus').textContent = `已更新「${form.dataset.username}」的学号。`;
+  } catch (err) { $('memberStudentIdStatus').textContent = err.message; }
+  finally { submit.disabled = false; }
+};
+
+let stateMember = null, memberStateBusy = false;
+
+function openMemberState(member) {
+  if (memberStateBusy || $('memberStateDialog').open) return;
+  stateMember = member;
+  $('memberStateTitle').textContent = `变更账号状态 · ${member.username}`;
+  $('memberStateActive').checked = !!member.active;
+  $('memberStateCurrent').textContent = member.active ? '账号已启用' : '账号已停用';
+  $('memberStateStatus').textContent = '';
+  $('memberStateDialog').showModal();
+}
+$('closeMemberState').onclick = () => {
+  if (!memberStateBusy) $('memberStateDialog').close();
+};
+$('memberStateDialog').addEventListener('cancel', e => {
+  if (memberStateBusy) e.preventDefault();
+});
+$('memberStateActive').onchange = async () => {
+  if (!stateMember || memberStateBusy) return;
+  const member = stateMember, control = $('memberStateActive');
+  const previous = !!member.active, active = control.checked;
+  memberStateBusy = true;
+  const controls = [control, $('closeMemberState'), $('deleteStateMember')];
+  controls.forEach(item => { item.disabled = true; });
+  $('memberStateStatus').textContent = '';
+  try {
+    await api('/api/admin/members', 'PATCH', {username: member.username, active});
+    member.active = active;
+    $('memberStateCurrent').textContent = active ? '账号已启用' : '账号已停用';
+    renderMembers();
+  } catch (err) {
+    control.checked = previous;
+    $('memberStateStatus').textContent = err.message;
+  } finally {
+    memberStateBusy = false;
+    controls.forEach(item => { item.disabled = false; });
+  }
+};
+$('deleteStateMember').onclick = () => {
+  if (!stateMember || memberStateBusy) return;
+  const name = stateMember.username;
+  openDeleteConfirm({
+    title: '删除账号',
+    context: 'member',
+    body: `确认删除「${name}」的账号？\n该操作无法撤销，已有排班和签到记录会保留。`,
+    submit: () => api('/api/admin/members?username=' + encodeURIComponent(name), 'DELETE'),
+    onDone: async () => {
+      $('memberStateDialog').close();
+      stateMember = null;
+      await loadMembers();
+      $('membersStatus').textContent = `已删除「${name}」的账号。`;
+    },
+  });
 };

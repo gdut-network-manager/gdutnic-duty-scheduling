@@ -61,12 +61,14 @@ $('fieldButton').onclick = async () => {
   try {
     button.classList.add('is-submitting');
     button.disabled = true;
-    await playRegistrationAnimation(button);
+    setFieldLabel(FIELD_PENDING);
+    const animation = playRegistrationAnimation(button, 'pending');
     const result = await api('/api/member/field-duty', 'POST');
+    await animation;
     button.classList.remove('is-submitting');
     paintFieldStatus(result);
   } catch (err) {
-    button.classList.remove('is-submitting', 'registered');
+    button.classList.remove('is-submitting', 'registered', 'pending');
     $('fieldStatus').textContent = err.message;
     setFieldLabel(button.matches(':hover') ? FIELD_HOVER : FIELD_IDLE);
     await loadFieldDuty();

@@ -39,8 +39,9 @@ const ACTION_ICONS = {
   '删除': 'delete-outline', '删除账号': 'delete-outline',
   '解绑SSO': 'link-off-outline',
   '更改权限': 'shield-account-outline', '更改密码': 'lock-outline',
+  '更改学号': 'card-account-details-outline',
   '重置密码': 'lock-reset', '停用账号': 'account-off-outline',
-  '启用账号': 'account-check-outline',
+  '启用账号': 'account-check-outline', '变更账号状态': 'account-off-outline',
 };
 function button(text, cls, fn) {
   const n=el('button','btn '+(cls==='delete'?'danger':cls==='secondary'?'tonal':cls||'primary'),text);
@@ -103,10 +104,9 @@ function render(changedIds = null) {
           button.classList.add('is-submitting');
           button.disabled = true;
           try {
-            await playRegistrationAnimation(button);
             await api(`/api/schedules/${s.id}/check-in`,'POST');
-            button.classList.add('registered');
             label.textContent = '已签到';
+            await playRegistrationAnimation(button);
             $('status').textContent = '';
             setTimeout(() => load(), 900);
           } catch (err) {

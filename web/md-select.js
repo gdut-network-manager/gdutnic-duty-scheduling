@@ -24,6 +24,7 @@
   const topLayer = typeof menu.showPopover === 'function';
   if (topLayer) menu.popover = 'manual';
   let owner = null, active = -1, touchMoved = false, lastWidth = innerWidth;
+  let motionGeneration = 0;
 
   const custom = (node) => (node instanceof HTMLSelectElement && !node.multiple && node.size <= 1 && !node.disabled ? node : null);
   const selectAt = (target) => custom(target instanceof Element ? target.closest('select') : null);
@@ -54,6 +55,7 @@
     const below = innerHeight - box.bottom - gap - edge, above = box.top - gap - edge;
     const up = below < Math.min(menu.offsetHeight, 200) && above > below;
     const heightLimit = menu.classList.contains('grouped') ? 410 : 320;
+    menu.dataset.openUp = String(up);
     menu.style.maxHeight = `${Math.min(Math.max(up ? above : below, 120), heightLimit)}px`;
     menu.style.minWidth = `${box.width}px`;
     menu.style.left = `${Math.max(edge, Math.min(box.left, innerWidth - menu.offsetWidth - edge))}px`;
@@ -80,6 +82,7 @@
   function open(select) {
     close();
     owner = select;
+    menu.inert = false;
     list.replaceChildren(...[...select.options].map((option, index) => {
       const item = make('div', 'md-select-option');
       item.id = `mdSelectOption${index}`;
@@ -106,7 +109,12 @@
     select.setAttribute('aria-expanded', 'true');
     if (select.selectedIndex >= 0 && usable(items()[select.selectedIndex])) setActive(select.selectedIndex);
     else step(1, -1);
-    requestAnimationFrame(() => menu.classList.add('open'));
+    const generation = ++motionGeneration;
+    requestAnimationFrame(() => {
+      if (generation !== motionGeneration || owner !== select) return;
+      menu.classList.add('open');
+      window.AppMotion?.menu(menu, true, menu.dataset.openUp === 'true');
+    });
   }
 
   function close() {
@@ -115,10 +123,19 @@
     select.removeAttribute('aria-expanded');
     select.removeAttribute('aria-activedescendant');
     owner = null;
+    menu.inert = true;
     active = -1;
-    menu.classList.remove('open');
+    const generation = ++motionGeneration;
+    const animation = window.AppMotion?.menu(menu, false, menu.dataset.openUp === 'true');
     if (hadFocus) select.focus({ preventScroll: true });
-    menu.remove();
+    const remove = () => {
+      if (generation !== motionGeneration || owner) return;
+      menu.classList.remove('open');
+      if (topLayer && menu.matches(':popover-open')) menu.hidePopover();
+      menu.remove();
+    };
+    if (animation) animation.finished.catch(() => {}).then(remove);
+    else remove();
   }
 
   function choose(index) {

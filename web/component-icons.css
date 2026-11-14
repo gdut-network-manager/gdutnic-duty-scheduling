@@ -110,3 +110,15 @@ h2[data-icon]::before, h3[data-icon]::before { color: var(--md-primary); }
 .password-visibility[data-icon]::before { width: 20px; height: 20px; flex-basis: 20px; }
 
 [data-icon="link-off-outline"] { --component-icon: url("/icon/components/link-off-outline.svg"); }
+
+[data-icon="card-account-details-outline"] { --component-icon: url("/icon/components/card-account-details-outline.svg"); }
+
+[data-icon="file-download-outline"] { --component-icon: url("/icon/components/file-download-outline.svg"); }
+
+[data-icon="file-upload-outline"] { --component-icon: url("/icon/components/file-upload-outline.svg"); }
+
+[data-icon="check-circle-outline"] { --component-icon: url("/icon/components/check-circle-outline.svg"); }
+
+[data-icon="close-circle-outline"] { --component-icon: url("/icon/components/close-circle-outline.svg"); }
+
+[data-icon="check"] { --component-icon: url("/icon/components/check.svg"); }

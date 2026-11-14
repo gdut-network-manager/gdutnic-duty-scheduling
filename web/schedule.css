@@ -284,26 +284,31 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 .detail-member.clickable,.field-person.clickable{cursor:pointer}
 .detail-member.clickable:hover{outline:1.6px solid var(--md-primary)}
 .field-person.clickable:hover{outline:1.6px solid var(--md-primary)}
-.status-options{display:flex;flex-wrap:wrap;gap:8px;margin:9.6px 0 12.8px}
-/* Radio options must not inherit the full-width text-input styling. */
-.status-option{display:inline-flex;align-items:center;gap:8px;padding:8px 14.4px;
-  border-radius:999px;background:var(--md-surface-low);cursor:pointer;font-size:11.2px;
-  color:var(--md-on-surface);line-height:1.4;white-space:nowrap}
-.status-option span{display:inline;margin:0;white-space:nowrap}
-/* Some browsers keep the block value from the generic rule above inside <dialog><form>;
-   !important keeps these radio dots laid out inline with their labels. */
-form label.status-option input[type=radio],
-form .status-options .status-option input[type=radio]{display:inline-block!important;flex:0 0 16px;
-  width:16px!important;height:16px!important;min-width:16px;margin:0!important;padding:0!important;border:0;
-  appearance:none;-webkit-appearance:none;
-  border-radius:50%;background:var(--md-surface-high);outline:1.6px solid var(--md-outline);
-  outline-offset:-1.6px;cursor:pointer;transition:background-color 120ms ease,outline-color 120ms ease}
-form label.status-option input[type=radio]:checked,
-form .status-options .status-option input[type=radio]:checked{background:var(--md-primary);outline-color:var(--md-primary);
-  box-shadow:inset 0 0 0 3.2px var(--md-surface-high)}
-form label.status-option input[type=radio]:focus-visible,
-form .status-options .status-option input[type=radio]:focus-visible{outline:1.6px solid var(--md-primary);outline-offset:2.4px}
-.status-option:has(input:checked){background:var(--md-primary-container);color:var(--md-on-primary-container)}
+/* Connected single-select buttons: shape morphs on selection and press. */
+.status-options { display: flex; flex-wrap: nowrap; gap: 2px; margin: 16px 0; }
+.status-option {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  flex: 1 1 0; min-width: 0; min-height: 48px; margin: 0; padding: 8px 12px;
+  border-radius: 8px; background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container, var(--md-on-primary-container));
+  cursor: pointer; font-size: 12.8px; line-height: 1.4;
+  transition: border-radius 300ms cubic-bezier(.2,0,0,1),
+    flex-grow 300ms cubic-bezier(.2,0,0,1), background-color 180ms ease, color 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.status-option:first-child { border-start-start-radius: 24px; border-end-start-radius: 24px; }
+.status-option:last-child { border-start-end-radius: 24px; border-end-end-radius: 24px; }
+.status-option:has(input:checked) { border-radius: 24px; background: var(--md-primary); color: var(--md-on-primary); flex-grow: 1.15; }
+.status-option:hover { filter: brightness(.96); }
+.status-option:active, .status-option:has(input:checked):active { border-radius: 12px; flex-grow: 1.3; }
+.status-option:has(input:focus-visible) { outline: 2px solid var(--md-primary); outline-offset: 3px; z-index: 1; }
+.status-option .status-option-content { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin: 0; white-space: nowrap; pointer-events: none; }
+#editStatusOptions .status-option input[type=radio] {
+  position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0;
+  margin: 0; padding: 0; opacity: 0; appearance: none; cursor: pointer;
+}
+@media (max-width: 380px) { .status-option { padding-inline: 8px; } }
+:root[data-motion="reduced"] .status-option { transition: none; }
 .field-person .manual-flag{font-size:11.2px;opacity:.8}
 
 /* Stat tiles size to their content instead of stretching across the page. */
@@ -558,7 +563,9 @@ form .status-options .status-option input[type=radio]:focus-visible{outline:1.6p
 .permission-group-status{margin:9.6px 0;min-height:1.5em;color:var(--md-primary)}
 #permissionGroupSelect{display:block;width:100%;margin-top:6.4px}#permissionGroupPreview{overflow-wrap:anywhere}
 @media(max-width:650px){.permission-group-summary{padding:16px}.permission-group-form{padding:0 16px 16px}.permission-group-form .actions{flex-wrap:wrap}}
-@media(prefers-reduced-motion:reduce){.permission-group-summary::after,.permission-branch>summary::after,.permission-tree .permission-branch>summary::before{transition:none}}
+:root[data-motion="reduced"] .permission-group-summary::after,
+:root[data-motion="reduced"] .permission-branch>summary::after,
+:root[data-motion="reduced"] .permission-tree .permission-branch>summary::before {transition:none}
 
 /* Attendance digest: tonal settings above an editable email canvas. */
 .push-settings { margin-bottom: 26px; }
@@ -608,9 +615,13 @@ form .status-options .status-option input[type=radio]:focus-visible{outline:1.6p
 .push-table th, .push-table td { padding: 10px 12px; vertical-align: top; border-bottom: 1px solid var(--schedule-surface-low, #eef3f7); white-space: nowrap; }
 .push-table tbody tr:last-child td { border-bottom: 0; }
 .push-empty { padding: 12px; margin: 0; }
-.push-history { margin-top: 20px; }
-.push-history summary { cursor: pointer; font-weight: 600; }
-.push-delivery { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--schedule-surface-low, #eef3f7); overflow-wrap: anywhere; }
+.push-history { margin-top: 20px; padding: 24px; }
+.push-history summary { cursor: pointer; font-weight: 600; line-height: 1.5; }
+.push-history[open] #pushDeliveries { margin-top: 16px; }
+#pushDeliveries > p { margin: 0; padding: 4px 0; line-height: 1.7; }
+.push-delivery { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; padding: 16px 0; line-height: 1.6; border-bottom: 1px solid var(--md-outline-variant, var(--md-outline)); overflow-wrap: anywhere; }
+.push-delivery:first-child { padding-top: 0; }
+.push-delivery:last-child { padding-bottom: 0; border-bottom: 0; }
 .push-delivery-error { flex-basis: 100%; }
 .push-error { color: var(--schedule-error, #ba1a1a); }
 #pushEditor { width: min(540px, calc(100vw - 40px)); box-sizing: border-box; }
@@ -701,11 +712,14 @@ form .status-options .status-option input[type=radio]:focus-visible{outline:1.6p
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   min-height: 36px;
-  padding: 4px 8px;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 50%;
   background: transparent;
   color: var(--md-primary);
   font: inherit;
@@ -719,8 +733,10 @@ form .status-options .status-option input[type=radio]:focus-visible{outline:1.6p
 /* The search label must not inherit form-field bottom spacing. */
 .members-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 9.6px; margin-bottom: 19.2px; }
 .members-toolbar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9.6px; }
-.members-toolbar .member-search { margin: 0; height: 40px; }
+.members-toolbar .member-search { margin: 0; height: 40px; width: 336px; max-width: 100%; min-width: 0; }
 .members-toolbar .member-search input {
+  width: 100%;
+  min-width: 0;
   height: 40px;
   margin: 0;
   padding-top: 0;
@@ -965,8 +981,10 @@ select {
   .hero { position: relative; top: auto; padding-top: 9.6px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .hero::after { display: none; }
 }
-@media (max-width: 800px) and (prefers-reduced-motion: reduce) {
-  .ga-nav, .nav-scrim { transition: none; }
+@media (max-width: 800px) {
+:root[data-motion="reduced"] .ga-nav,
+:root[data-motion="reduced"] .nav-scrim { transition: none; }
+
 }
 
 /* Every single-line field is a pill of one height. Its left padding equals the end-cap
@@ -991,11 +1009,12 @@ select {
 
 /* Concentric corners: card radius = its padding + the radius of the pills in its corners,
    so the badge (top right) and the action buttons (bottom left) share one height. */
-:is(#specialList .card, .swap-card, #memberList .card) { --pill: 32px; --pad: 12.8px; padding: var(--pad); border-radius: calc(var(--pad) + var(--pill) / 2); }
+:is(#specialList .card, .swap-card, #memberList .card) { --pill: 32px; --pad: 12.8px; padding: var(--pad); border-radius: var(--md-radius-xl); }
 :is(#specialList .card, .swap-card, #memberList .card) :is(.badge, .actions .btn) { box-sizing: border-box; height: var(--pill); min-height: var(--pill); padding-top: 0; padding-bottom: 0; }
-/* The title matches the shift editor's h2 and starts under the centre of the top-left corner arc, level with the badge. */
-:is(#specialList .card .time, .swap-card .shift-top h2, #memberList .card h2) { font-size: 16px; letter-spacing: 0.06em; line-height: var(--pill); }
-:is(#specialList .card :is(.time, .location), .swap-card .shift-top h2) { padding-left: calc(var(--pill) / 2); }
+/* Schedule titles use a text line height, independent of the action buttons. */
+:is(#specialList .card .time, .swap-card .shift-top h2, #memberList .card h2) { font-size: 16px; letter-spacing: 0.06em; }
+:is(#specialList .card .time, .swap-card .shift-top h2) { line-height: 1.5; }
+#memberList .card h2 { line-height: var(--pill); }
 /* Account text sits on the corner's diagonal: its left inset equals the gap above the 16px name. */
 #memberList .card :is(h2, p, .permission-tags) { padding-left: calc((var(--pill) - 16px) / 2); }
 #specialList .card .location { margin-top: 0; }
@@ -1009,29 +1028,28 @@ select {
 #memberList .member-account .actions .btn { white-space: nowrap; }
 @media (max-width: 650px) { #memberList .member-account .actions { flex: 0 0 auto; align-self: stretch; } }
 
-/* Same concentric corners for the shift editor. The title starts under the centre of the
-   top-left corner arc, level with the close button. */
-#editor { --pill: 32px; --pad: 22.4px; padding: var(--pad); border-radius: calc(var(--pad) + var(--pill) / 2); }
+/* Editor corner geometry follows the action button; text uses the content inset. */
+#editor { --pill: 32px; --pad: 22.4px; padding: var(--pad); border-radius: var(--md-radius-xl); }
 #editor .btn { box-sizing: border-box; height: var(--pill); min-height: var(--pill); padding-top: 0; padding-bottom: 0; }
-#editor .section-head { margin-top: 0; min-height: var(--pill); }
-#editor .section-head h2 { margin: 0; padding-left: calc(var(--pill) / 2); line-height: var(--pill); }
+#editor .section-head { margin-top: 0; }
+#editor .section-head h2 { margin: 0; padding: 0; line-height: 1.5; }
 /* Labels and hints start on the same line as the title; the fields keep the full width. */
 #editor form label, #editor form > p { padding-left: calc(var(--pill) / 2); }
 #editor form label :is(input, textarea) { margin-left: calc(var(--pill) / -2); width: calc(100% + var(--pill) / 2); max-width: none; }
 
-/* Settings cards: each corner's radius = padding + the radius of what sits in it, so both are
-   concentric with an equal gap: the 18px title icon on top, the save button at the bottom. */
+/* Settings: title and body share a content inset; only actions determine corner geometry. */
 #settingsPage .card {
-  --pill: 34px; --pad: 19.2px; --icon: 18px;
+  --pill: 34px; --pad: 19.2px;
   padding: var(--pad);
-  border-radius: calc(var(--pad) + var(--icon) / 2) calc(var(--pad) + var(--icon) / 2) calc(var(--pad) + var(--pill) / 2) calc(var(--pad) + var(--pill) / 2);
+  border-radius: var(--md-radius-xl);
 }
 #settingsPage .card .btn { box-sizing: border-box; height: var(--pill); min-height: var(--pill); padding-top: 0; padding-bottom: 0; }
-#settingsPage .card > h2 { margin-top: 0; margin-bottom: 4px; min-height: var(--icon); line-height: var(--icon); padding-left: 0; }
+#settingsPage .card > h2 { margin-top: 0; margin-bottom: 4px; line-height: 1.5; padding-left: 0; }
 @media (max-width: 650px) { #settingsPage .card { --pad: 16px; } }
 
 /* About page: the Wiki card (feature guide rendered from description/description.md). */
-.wiki-panel { margin-top: 20px; }
+#aboutPage > .about-panel { margin-top: 0; }
+#aboutPage > .about-panel + .about-panel { margin-top: 20px; }
 .wiki-head h2 { margin: 0 0 6px; font-size: 20px; color: var(--md-on-surface); }
 .wiki-head p, .wiki-status { margin: 0; color: var(--md-on-surface-variant); line-height: 1.8; }
 .wiki-status { margin-top: 16px; }
@@ -1078,7 +1096,8 @@ select {
   .wiki-page > summary, .wiki-feature, .wiki-note { padding-left: 12px; padding-right: 12px; }
   .wiki-page > .wiki-place { padding-left: 12px; padding-right: 12px; }
 }
-@media (prefers-reduced-motion: reduce) { .wiki-page > summary::after, .wiki-overview > summary::after { transition: none; } }
+:root[data-motion="reduced"] .wiki-page > summary::after,
+:root[data-motion="reduced"] .wiki-overview > summary::after { transition: none; }
 /* Card content is inset 6px on both sides from the title and the action buttons, which stay in the corners. */
 #settingsPage .card > :not(h2, .btn, .actions, fieldset),
 #settingsPage #ssoFields > :not(.sso-actions),
@@ -1151,17 +1170,16 @@ body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
   .wiki-feature-list { margin: 0 8px 8px; }
 }
 
-/* Keep the publish heading and action inside matching corner arcs. */
+/* Heading and supporting content at top left; primary action at bottom right. */
 .card.publish-card {
-  --publish-inset: 16px;
+  --publish-inset: 24px;
   --publish-action-height: 40px;
   padding: var(--publish-inset);
-  border-radius: calc(var(--publish-inset) + var(--publish-action-height) / 2);
+  border-radius: var(--md-radius-xl);
 }
 .publish-card > h2 {
   margin: 0;
-  min-height: var(--publish-action-height);
-  padding-left: calc(var(--publish-action-height) / 2);
+  padding: 0;
   display: flex;
   align-items: center;
 }
@@ -1188,7 +1206,7 @@ body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
   height: var(--field-h);
   padding: 0;
 }
-.publish-card .publish-form { margin: 0; }
+.publish-card .publish-form { display: flex; justify-content: flex-end; margin: 28px 0 0; }
 .publish-card .publish-form .btn {
   box-sizing: border-box;
   min-height: var(--publish-action-height);
@@ -1196,13 +1214,10 @@ body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
   padding-bottom: 0;
 }
 @media(max-width:650px) {
-  .card.publish-card { --publish-inset: 12px; }
+  .card.publish-card { --publish-inset: 20px; }
   .publish-card .publish-range { grid-template-columns: minmax(0, 1fr); max-width: 100%; }
   .publish-card .publish-arrow { display: none; }
 }
-
-.publish-card > p,
-.publish-card .publish-range { margin-left: 2em; }
 
 /* Settings explanations match the page introduction, with one blank line around each paragraph. */
 #settingsPage > .hero p,
@@ -1220,3 +1235,187 @@ body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
 #fieldBoard .field-person .manual-flag { min-height: 1.5em; line-height: 1.5; }
 
 .wiki-head { position: relative; top: -.5em; }
+
+#memberList .card.member-account .member-student-id { flex: 0 0 100%; min-height: 20px; overflow-wrap: anywhere; }
+
+/* Equal button heights and insets keep all three corner arcs concentric. */
+#memberPasswordDialog {
+  --password-action-height: 32px;
+  --password-inset: 22.4px;
+  padding: var(--password-inset);
+  border-radius: calc(var(--password-inset) + var(--password-action-height) / 2);
+}
+#memberPasswordDialog .btn {
+  box-sizing: border-box;
+  height: var(--password-action-height);
+  min-height: var(--password-action-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: calc(var(--password-action-height) / 2);
+  white-space: nowrap;
+}
+#memberPasswordDialog .section-head { margin-top: 0; min-height: var(--password-action-height); }
+#memberPasswordTitle { padding-left: calc(var(--password-action-height) / 2); overflow-wrap: anywhere; }
+#memberPasswordDialog .member-password-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
+#memberPasswordStatus:empty { display: none; }
+
+/* In-page delete confirmation, with concentric card and action corners. */
+.delete-confirm-card {
+  --delete-inset: 22.4px;
+  --delete-action-height: 32px;
+  margin: auto;
+  padding: var(--delete-inset);
+  border-radius: calc(var(--delete-inset) + var(--delete-action-height) / 2);
+}
+.delete-confirm-card :is(h2, #deleteConfirmBody, #deleteConfirmStatus) {
+  padding-inline: calc(var(--delete-action-height) / 2);
+}
+#deleteConfirmBody { white-space: pre-line; overflow-wrap: anywhere; line-height: 1.7; }
+#deleteConfirmStatus { color: var(--md-error); overflow-wrap: anywhere; }
+#deleteConfirmStatus:empty { display: none; }
+.delete-confirm-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 0; }
+.delete-confirm-actions .btn {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  margin: 0;
+  height: var(--delete-action-height);
+  min-height: var(--delete-action-height);
+  padding-block: 0;
+  border-radius: calc(var(--delete-action-height) / 2);
+}
+
+#memberStateTitle { min-width: 0; overflow-wrap: anywhere; }
+.member-state-card .section-head .btn { flex-shrink: 0; }
+.member-state-card .member-state-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-top: 12.8px; padding: 0;
+}
+#memberStateEnabledLabel { font-size: 14px; font-weight: 500; }
+#memberStateCurrent { margin: 4px 0 0; font-size: 12.8px; }
+.member-state-card :is(#memberStateHint, #memberStateStatus) { padding: 0; }
+#memberStateHint { margin: 12px 0 0; font-size: 14px; line-height: 1.7; }
+#memberStateStatus { color: var(--md-error); overflow-wrap: anywhere; }
+#memberStateStatus:empty { display: none; }
+.member-state-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+.member-state-card .sso-toggle input:disabled + span { opacity: .5; }
+.member-state-card .sso-toggle input:disabled { cursor: wait; }
+
+#memberList .permission-tags.is-inactive .permission-tag {
+  background: var(--md-surface-low);
+  color: var(--md-on-surface-variant);
+  filter: grayscale(1);
+}
+
+.student-import-card { overflow-y: auto; }
+.student-import-card :is(#studentImportSummary, #studentImportNotes, #studentImportStatus, #studentImportConflicts) { padding-inline: calc(var(--delete-action-height) / 2); }
+.student-import-actions { justify-content: flex-end; }
+.student-import-card #studentImportTitle::before, .student-id-new { color: var(--schedule-on-success-container, #246b35); }
+.student-import-card.has-conflicts #studentImportTitle::before, .student-id-old, .student-conflict-reason, #studentImportStatus { color: var(--md-error); }
+.student-import-conflict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding-block: 10px; border-bottom: 1px solid var(--md-outline-variant, var(--md-outline)); overflow-wrap: anywhere; }
+.student-import-conflict strong { flex: 0 0 auto; }
+.student-conflict-reason { flex-basis: 100%; }
+#studentImportStatus:empty, #studentImportConflicts:empty { display: none; }
+
+/* Schedule cards share the publish card's content inset and bottom-right actions. */
+:is(#specialList > .card, .swap-card) {
+  padding: 24px;
+  border-radius: var(--md-radius-xl);
+}
+:is(#specialList > .card, .swap-card) .actions {
+  justify-content: flex-end;
+  margin-top: 28px;
+}
+#specialList .card :is(.time, .location), .swap-card .shift-top h2 { padding-left: 0; }
+@media (max-width: 650px) {
+  :is(#specialList > .card, .swap-card) { padding: 20px; }
+}
+
+/* Schedule editors use the same left-aligned content and bottom-right action. */
+:is(#editor, #swapDialog) { padding: 24px; border-radius: var(--md-radius-xl); }
+#editor .section-head h2, #editor form label, #editor form > p { padding-left: 0; }
+#editor form label :is(input, textarea) { margin-left: 0; width: 100%; max-width: 100%; }
+:is(#shiftForm, #swapForm) > button[type=submit] { display: flex; margin: 28px 0 0 auto; }
+#deleteConfirmDialog:not([data-context="member"]) { padding: 24px; border-radius: var(--md-radius-xl); }
+#deleteConfirmDialog:not([data-context="member"]) :is(h2, #deleteConfirmBody, #deleteConfirmStatus) { padding-inline: 0; }
+#deleteConfirmDialog:not([data-context="member"]) .delete-confirm-actions { justify-content: flex-end; margin-top: 28px; }
+@media (max-width: 650px) {
+  :is(#editor, #swapDialog), #deleteConfirmDialog:not([data-context="member"]) { padding: 20px; }
+}
+
+/* Push cards share the schedule card layout; preview metadata is plain text. */
+.card.push-settings, .push-window { --push-card-inset: 24px; padding: var(--push-card-inset); }
+.card.push-settings { border-radius: var(--md-radius-xl); }
+.push-settings-actions { display: flex; justify-content: flex-end; margin-top: 28px; }
+.push-settings-actions .btn { box-sizing: border-box; height: 32px; min-height: 32px; padding-block: 0; }
+.push-window .push-preview-head { margin: 0 0 16px; }
+.push-window .push-window-bar {
+  display: block; margin: 0 0 16px; padding: 0; background: transparent;
+  border-radius: 0; color: var(--md-on-surface-variant); cursor: default;
+  white-space: nowrap; overflow-x: auto;
+}
+.push-window .push-letter { padding: 0; }
+@media (max-width: 650px) {
+  .card.push-settings, .push-window { --push-card-inset: 20px; }
+}
+
+/* Settings and the mail editor share the schedule card layout. */
+#settingsPage .card {
+  --pad: 24px;
+  padding: var(--pad);
+  border-radius: var(--md-radius-xl);
+}
+#settingsPage .card > h2 { margin: 0 0 16px; }
+#settingsPage .card > :not(h2, .btn, .actions, fieldset),
+#settingsPage #ssoFields > :not(.sso-actions),
+#settingsPage #ssoFields .sso-actions > :not(.actions) { margin-left: 0; margin-right: 0; }
+#settingsPage .card > button[type=submit] { display: flex; margin: 28px 0 0; justify-self: start; }
+#settingsPage .card .actions,
+#settingsPage #ssoConfigForm .sso-actions .actions { justify-content: flex-start; margin-top: 28px; }
+#pushEditor {
+  --push-editor-inset: 24px;
+  --push-editor-action: 32px;
+  padding: var(--push-editor-inset);
+  border-radius: var(--md-radius-xl);
+}
+#pushEditor .section-head { margin-top: 0; }
+#pushEditor .btn { box-sizing: border-box; height: var(--push-editor-action); min-height: var(--push-editor-action); padding-block: 0; }
+#pushEditorForm > button { display: flex; margin: 28px 0 0 auto; }
+@media (max-width: 650px) {
+  #settingsPage .card { --pad: 20px; }
+  #pushEditor { --push-editor-inset: 20px; }
+}
+
+@media (max-width: 650px) { .card.push-history { padding: 20px; } }
+
+/* One settings-page save action; card test actions remain independent. */
+#settingsPage { padding-bottom: 100px; }
+#settingsPage form button[type=submit] { display:none !important; }
+.settings-save-dock { position:fixed;right:24px;bottom:24px;z-index:40;display:flex;align-items:center;justify-content:flex-end;gap:12px;max-width:calc(100vw - 48px); }
+#settingsSaveAllStatus { max-width:360px;margin:0;padding:10px 14px;border-radius:12px;background:var(--md-surface-high);color:var(--md-on-surface);box-shadow:var(--md-shadow);font-size:12.8px;line-height:1.6; }
+#settingsSaveAllStatus:empty { display:none; }
+#settingsSaveAll.settings-save-fab { flex:0 0 56px;width:56px;height:56px;min-height:56px;padding:0;border-radius:16px;gap:0;background:var(--md-primary-container);color:var(--md-on-primary-container);box-shadow:0 4px 12px rgb(0 0 0 / .22); }
+#settingsSaveAll::before { width:24px;height:24px;flex-basis:24px; }
+#settingsSaveAll:hover:not(:disabled) { box-shadow:0 6px 16px rgb(0 0 0 / .28); }
+@media(max-width:650px) { .settings-save-dock { right:16px;bottom:calc(16px + env(safe-area-inset-bottom));max-width:calc(100vw - 32px); } }
+
+/* Full-width cards keep readable content aligned to the left. */
+#settingsPage, #aboutPage { width:100%;max-width:none; }
+#settingsPage .card {
+  display:grid;
+  grid-template-columns:minmax(0, calc(960px - var(--pad) - var(--pad)));
+  justify-content:start;
+}
+#settingsPage .card > * { min-width:0; }
+#aboutPage .about-panel {
+  --about-content-inset:32px;
+  box-sizing:border-box;width:100%;max-width:none;
+  display:grid;
+  grid-template-columns:minmax(0, calc(760px - var(--about-content-inset) - var(--about-content-inset)));
+  justify-content:start;
+}
+#aboutPage .about-panel > * { min-width:0; }
+@media(max-width:650px) {
+  #aboutPage .about-panel { --about-content-inset:20px; }
+}
+
+#editStatusOptions[data-kind="field"] { width:240px;max-width:100%; }
