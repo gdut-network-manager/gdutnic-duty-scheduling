@@ -67,12 +67,15 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--md-primary);
+  color: var(--md-on-surface);
   font: inherit;
   cursor: pointer;
 }
-.theme-toggle:hover { background: var(--md-primary-container); color: var(--md-on-primary-container); }
-.theme-toggle:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+.theme-toggle[data-icon]::before { width:20px;height:20px;flex-basis:20px; }
+.theme-toggle:hover:not(:disabled) { background:color-mix(in srgb, currentColor 8%, transparent); }
+.theme-toggle:focus-visible { background:color-mix(in srgb, currentColor 10%, transparent);outline:2px solid currentColor;outline-offset:2px; }
+.theme-toggle:active:not(:disabled) { background:color-mix(in srgb, currentColor 12%, transparent); }
+.theme-toggle:disabled { cursor:progress;opacity:1; }
 [data-icon="weather-sunny"] { --component-icon: url("/icon/weather-sunny.svg"); }
 [data-icon="weather-night"] { --component-icon: url("/icon/weather-night.svg"); }
 /* Existing SVG masks inherit each control's semantic foreground color. */
@@ -187,11 +190,9 @@
 :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
 :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):disabled { opacity: .38; cursor: default; }
 :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):disabled::before { display: none; }
-@media (prefers-reduced-motion: reduce) {
-  :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input),
-  :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::before,
-  :root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::after { transition: none; }
-}
+:root[data-motion="reduced"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input),
+:root[data-motion="reduced"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::before,
+:root[data-motion="reduced"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::after { transition: none; }
 
 /* Wiki containers nested inside the about panel use outlined white surfaces. */
 :root:not([data-theme="dark"]) #wikiPanel :is(.wiki-tile, .wiki-page, .wiki-feature-list) {
@@ -289,9 +290,7 @@
 :root body .outlined-field:has(> select option:checked:not([value=""])) > select + span {
   top: 0; transform: translateY(-50%) scale(.75); background: var(--md-surface-high);
 }
-@media(prefers-reduced-motion:reduce) {
-  :root body .m3-field-caption { transition: none; }
-}
+:root[data-motion="reduced"] body .m3-field-caption { transition: none; }
 
 :root:not([data-theme="dark"]) #fieldBoard .field-person {
   border: 1px solid currentColor;
@@ -504,3 +503,43 @@
   top: 0;
   transform: translateY(-50%);
 }
+
+:root[data-theme="dark"] #deleteConfirmDialog[data-context="member"] {
+  outline: 1px solid var(--md-error-container);
+}
+
+/* Applied before first paint for older Chromium and OS reduced-motion settings. */
+:root[data-motion="reduced"] { scroll-behavior: auto !important; }
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  animation-duration: .01ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+/* The incoming theme is revealed over the old browser snapshot from the toggle. */
+:root[data-theme-transition]::view-transition-group(root),
+:root[data-theme-transition]::view-transition-old(root),
+:root[data-theme-transition]::view-transition-new(root) { animation:none;mix-blend-mode:normal; }
+:root[data-theme-transition]::view-transition-old(root) { z-index:1; }
+:root[data-theme-transition]::view-transition-new(root) {
+  z-index:2;
+  clip-path:circle(0px at var(--theme-reveal-x) var(--theme-reveal-y));
+}
+:root[data-theme-transition] *,
+:root[data-theme-transition] *::before,
+:root[data-theme-transition] *::after { transition:none !important;animation:none !important; }
+:root[data-theme-transition] .m3-ripple-surface { visibility:hidden; }
+
+/* Only the eye symbol animates; the password field is never snapshotted. */
+.password-visibility[data-icon]::before { display:none; }
+.outlined-field .password-visibility-icon {
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:0;margin:0;transform:none;color:inherit;background:transparent;
+  line-height:1;transition:none;pointer-events:none;
+}
+.password-visibility-icon::before { width:20px;height:20px;flex-basis:20px; }

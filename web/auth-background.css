@@ -42,10 +42,8 @@
 .auth-background.is-paused::after {
   animation-play-state: paused;
 }
-@media (prefers-reduced-motion: reduce) {
-  .auth-background::before,
-  .auth-background::after { animation: none; }
-}
+:root[data-motion="reduced"] .auth-background::before,
+:root[data-motion="reduced"] .auth-background::after { animation: none; }
 .auth-background[hidden] { display: none !important; }
 body.auth-pending > .admin-board,
 body > #authCard,
