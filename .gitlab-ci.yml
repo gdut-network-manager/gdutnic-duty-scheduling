@@ -1,0 +1,309 @@
+stages:
+  - check
+  - image-build
+  - signing
+  - deploy
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+variables:
+  IMAGE_PROJECT: gdutnic-duty-scheduling
+  IMAGE_NAME: duty-scheduling
+  CHART_NAME: duty-scheduling
+  CHART_PROJECT: gdutnic-duty-scheduling/duty-scheduling-helm
+
+# 可选检查：未配置 SonarQube 变量时自动跳过。
+sonarqube-check:
+  stage: check
+  image:
+    name: registry.gdut.edu.cn/docker/sonarsource/sonar-scanner-cli:11
+    entrypoint: [""]
+  tags:
+    - dev
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  script:
+    - |
+      if [ -z "${SONAR_HOST_URL:-}" ] || [ -z "${SONAR_TOKEN:-}" ]; then
+        echo "SONAR_HOST_URL / SONAR_TOKEN 未配置，跳过 SonarQube。"
+        exit 0
+      fi
+      sonar-scanner \
+        -Dsonar.host.url="${SONAR_HOST_URL}" \
+        -Dsonar.token="${SONAR_TOKEN}"
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# 可选检查：未配置 GitHub 镜像变量时自动跳过。
+github-mirror:
+  stage: check
+  image: registry.gdut.edu.cn/docker/alpine/git:latest
+  tags:
+    - dev
+  before_script:
+    - git config --global --add safe.directory "${CI_PROJECT_DIR}"
+  script:
+    - |
+      if [ -z "${GITHUB_REPO:-}" ] || [ -z "${GITHUB_TOKEN:-}" ]; then
+        echo "GITHUB_REPO / GITHUB_TOKEN 未配置，跳过 GitHub 镜像。"
+        exit 0
+      fi
+      git remote add github "https://x-access-token:${GITHUB_TOKEN}@${GITHUB_REPO#https://}"
+      git push github "HEAD:${CI_COMMIT_REF_NAME}" --force
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+docker-build-and-push:
+  stage: image-build
+  image: registry.gdut.edu.cn/docker/library/docker:stable
+  tags:
+    - Docker
+  services:
+    - name: registry.gdut.edu.cn/docker/library/docker:stable
+  variables:
+    DOCKER_CLI_EXPERIMENTAL: "enabled"
+  script:
+    - |
+      set -eu
+      if [ -n "${CI_COMMIT_TAG:-}" ]; then
+        TAG="${CI_COMMIT_TAG}"
+      else
+        TAG="${CI_COMMIT_SHORT_SHA}"
+      fi
+      IMAGE="${HARBORHOST}/${IMAGE_PROJECT}/${IMAGE_NAME}"
+      echo "IMAGE=${IMAGE}" >> build.env
+      echo "IMAGE_TAG=${TAG}" >> build.env
+
+      echo "${PASSWORD}" | docker login -u "${USERNAME}" --password-stdin "${HARBORHOST}"
+
+      if docker manifest inspect "${IMAGE}:${TAG}" >/dev/null 2>&1 \
+          && [ "${FORCE_REBUILD:-false}" != "true" ]; then
+        echo "镜像 ${IMAGE}:${TAG} 已存在，跳过构建。"
+        echo "SKIP_DOCKER=true" >> build.env
+      else
+        docker build --pull -t "${IMAGE}:${TAG}" -f Dockerfile .
+        docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
+        docker push "${IMAGE}:${TAG}"
+        docker push "${IMAGE}:latest"
+        echo "SKIP_DOCKER=false" >> build.env
+      fi
+  after_script:
+    - docker builder prune --all --force || true
+  artifacts:
+    reports:
+      dotenv: build.env
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+helm-build:
+  stage: image-build
+  image: registry.gdut.edu.cn/docker/dtzar/helm-kubectl:3.8.0
+  tags:
+    - dev
+  script:
+    - |
+      set -eu
+      CHART_VERSION="0.1.${CI_PIPELINE_IID}"
+      echo "CHART_VERSION=${CHART_VERSION}" >> build.env
+
+      echo "${PASSWORD}" | helm registry login "${HARBORHOST}" \
+        --username "${USERNAME}" --password-stdin
+
+      if helm pull "oci://${HARBORHOST}/${CHART_PROJECT}" \
+          --version "${CHART_VERSION}" >/dev/null 2>&1; then
+        rm -f "${CHART_NAME}-"*.tgz
+        echo "Chart ${CHART_VERSION} 已存在，跳过构建。"
+        echo "SKIP_CHART=true" >> build.env
+      else
+        helm package helm \
+          --version "${CHART_VERSION}" \
+          --app-version "${CI_COMMIT_SHORT_SHA}"
+        helm push "${CHART_NAME}-${CHART_VERSION}.tgz" \
+          "oci://${HARBORHOST}/${CHART_PROJECT}"
+        echo "SKIP_CHART=false" >> build.env
+      fi
+  artifacts:
+    reports:
+      dotenv: build.env
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+image-sign:
+  stage: signing
+  # Keep the base image that the runners already have cached. Debian trixie
+  # only provides the cosign package, which is fetched below.
+  image: registry.gdut.edu.cn/docker/library/ubuntu:22.04
+  tags:
+    - dev
+  needs:
+    - job: docker-build-and-push
+      artifacts: true
+    - job: helm-build
+      artifacts: true
+  before_script:
+    - |
+      # The base image has no CA bundle, so use the HTTP mirror to bootstrap.
+      cat > /etc/apt/sources.list <<'EOF'
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
+      deb http://mirrors.gdut.edu.cn/ubuntu/ jammy-security main restricted universe multiverse
+      EOF
+    - |
+      # Debian trixie packages cosign 2.x, which understands the scrypt KDF used
+      # by newer cosign key pairs. Only the .deb is downloaded so that the
+      # library set of the Ubuntu base image stays untouched.
+      printf '%s\n' \
+        'deb [trusted=yes] http://mirrors.gdut.edu.cn/debian trixie main' \
+        > /etc/apt/sources.list.d/debian-trixie.list
+    - apt-get update -y
+    - apt-get install -y --no-install-recommends ca-certificates
+    - cd /tmp && apt-get download cosign && dpkg -i cosign_*.deb
+  script:
+    - |
+      set -eu
+      if [ -z "${COSIGN_PRIVATE_KEY:-}" ]; then
+        echo "COSIGN_PRIVATE_KEY 未配置，跳过签名。"
+        exit 0
+      fi
+
+      cosign version
+
+      # Accept the key as raw PEM (multi-line variable), base64 (single-line
+      # variable, which is what the GitLab UI handles best) or a File variable.
+      case "${COSIGN_PRIVATE_KEY}" in
+        -----BEGIN*)
+          printf '%s' "${COSIGN_PRIVATE_KEY}" > cosign.key
+          ;;
+        /*)
+          if [ ! -f "${COSIGN_PRIVATE_KEY}" ]; then
+            echo "COSIGN_PRIVATE_KEY 指向的文件不存在：${COSIGN_PRIVATE_KEY}" >&2
+            exit 1
+          fi
+          cp "${COSIGN_PRIVATE_KEY}" cosign.key
+          ;;
+        *)
+          printf '%s' "${COSIGN_PRIVATE_KEY}" | base64 -d > cosign.key
+          ;;
+      esac
+
+      if ! grep -q 'BEGIN .*PRIVATE KEY' cosign.key; then
+        echo "COSIGN_PRIVATE_KEY 格式无法识别：请使用原始 PEM、base64 或 File 变量。" >&2
+        exit 1
+      fi
+
+      chmod 600 cosign.key
+      export COSIGN_PASSWORD="${COSIGN_PASSWORD:-}"
+
+      if ! cosign public-key --key cosign.key >/dev/null 2>&1; then
+        echo "COSIGN_PRIVATE_KEY 无法被当前 cosign 解密，请检查 COSIGN_PASSWORD 和密钥格式。" >&2
+        exit 1
+      fi
+
+      cosign login -u "${USERNAME}" -p "${PASSWORD}" "${HARBORHOST}"
+
+      if [ "${SKIP_DOCKER:-false}" = "true" ]; then
+        echo "镜像未重新构建，跳过镜像签名。"
+      else
+        cosign sign --key cosign.key --tlog-upload=false "${IMAGE}:${IMAGE_TAG}"
+      fi
+
+      if [ "${SKIP_CHART:-false}" = "true" ]; then
+        echo "Chart 未重新构建，跳过 Chart 签名。"
+      else
+        cosign sign --key cosign.key --tlog-upload=false \
+          "${HARBORHOST}/${CHART_PROJECT}/${CHART_NAME}:${CHART_VERSION}"
+      fi
+  after_script:
+    - rm -f cosign.key
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# 部署到目标集群。只有默认分支会执行，且需要 GitLab 里配置 KUBECONFIG_DATA
+# 和 VALUES_BASE64；未配置时打印提示并跳过，不会让流水线变红。
+helm-deploy:
+  stage: deploy
+  image: registry.gdut.edu.cn/docker/dtzar/helm-kubectl:3.8.0
+  tags:
+    - dev
+  needs:
+    - job: docker-build-and-push
+      artifacts: true
+    - job: helm-build
+      artifacts: true
+    - job: image-sign
+  # 单副本 + RWO PVC，必须避免两个发布同时操作同一个 release。
+  resource_group: duty-scheduling-deploy
+  environment:
+    name: production
+    url: https://attendance.gdutnic.com
+  variables:
+    DEPLOY_NAMESPACE: gdutnic
+    DEPLOY_RELEASE: duty-scheduling
+    DEPLOY_TIMEOUT: 10m
+    # --debug 会把 USER-SUPPLIED VALUES（含明文密码）和渲染后的 MANIFEST
+    # 打进 job 日志，只在排查问题时手动触发一次并设为 "true"。
+    HELM_DEBUG: "false"
+  script:
+    - |
+      set -eu
+      if [ -z "${KUBECONFIG_DATA:-}" ] || [ -z "${VALUES_BASE64:-}" ]; then
+        echo "KUBECONFIG_DATA / VALUES_BASE64 未配置，跳过部署。"
+        exit 0
+      fi
+
+      export KUBECONFIG="${CI_PROJECT_DIR}/kubeconfig"
+      printf '%s' "${KUBECONFIG_DATA}" | base64 -d > "${KUBECONFIG}"
+      printf '%s' "${VALUES_BASE64}" | base64 -d > custom.yaml
+      chmod 600 "${KUBECONFIG}" custom.yaml
+
+      echo "部署 ${DEPLOY_RELEASE}/${CHART_NAME}:${CHART_VERSION}，镜像 tag ${IMAGE_TAG}"
+
+      kubectl version --client
+      # kubeconfig 或网络不通时在这里尽早失败，而不是等 helm 超时。
+      kubectl get --raw=/version >/dev/null
+      helm version --short
+
+      echo "${PASSWORD}" | helm registry login "${HARBORHOST}" \
+        --username "${USERNAME}" --password-stdin
+
+      # 命名空间由管理员预先创建：CI 用的是 namespaced ServiceAccount，
+      # 没有创建 Namespace 的集群级权限，不能用 --create-namespace。
+      #
+      # --debug 默认关闭：它会打印 USER-SUPPLIED VALUES（含明文密码）和
+      # 渲染后的 MANIFEST（secrets.create=true 时还有 Secret 的 base64 data），
+      # 都会永久留在 job 日志里。排查问题时临时把 HELM_DEBUG 设为 "true"。
+      HELM_DEBUG_FLAG=""
+      if [ "${HELM_DEBUG:-false}" = "true" ]; then
+        HELM_DEBUG_FLAG="--debug"
+        echo "警告：HELM_DEBUG=true，本次部署会把 values 和 manifest 写入日志。"
+      fi
+
+      helm upgrade --install "${DEPLOY_RELEASE}" \
+        "oci://${HARBORHOST}/${CHART_PROJECT}/${CHART_NAME}" \
+        --version "${CHART_VERSION}" \
+        --namespace "${DEPLOY_NAMESPACE}" \
+        --values custom.yaml \
+        --set image.tag="${IMAGE_TAG}" \
+        --atomic \
+        --timeout "${DEPLOY_TIMEOUT}" \
+        --history-max 10 \
+        ${HELM_DEBUG_FLAG}
+  after_script:
+    - rm -f custom.yaml kubeconfig
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

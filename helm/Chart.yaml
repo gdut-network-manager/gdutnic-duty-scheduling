@@ -1,0 +1,9 @@
+apiVersion: v2
+name: duty-scheduling
+description: GDUTNIC duty scheduling and check-in service (FastAPI + MySQL).
+type: application
+
+# CI overrides both fields when packaging:
+#   --version 0.1.<pipeline id> --app-version <commit sha>
+version: 0.1.0
+appVersion: "0.1.0"
