@@ -327,16 +327,18 @@ async def verify(request: Request):
         flow = pending(request, conn)
     csrf(request, body, flow)
     name, password = str(body.get('username') or '').strip(), str(body.get('password') or '')
-    key, account = 'admin:' + api.security.login_client_key(request), 'admin:' + name.casefold()
+    account = api.security.login_account_key('admin', name)
+    key = api.security.login_client_key(request) + ':' + account
     # A binding proof that can authorize admin login uses the existing admin throttle.
     privileged = flow['target'] == 'admin' or permissions.is_admin(name)
-    if privileged and (api.ADMIN_LIMITER.blocked(key) or api.ACCOUNT_LIMITER.blocked(account)):
-        raise HTTPException(429, '管理员登录尝试过于频繁，请在限制开始 10 分钟后重试')
-    version = (root_admin.session_version() if root_admin.verify(password) else None) if root_admin.is_root(name) else member_store.authenticate(name, password)
+    if root_admin.is_root(name):
+        version = await api._verify_login(root_admin.authenticate, password)
+    else:
+        version = await api._verify_login(member_store.authenticate, name, password)
     if not version or not eligible(name, flow['target']):
         if privileged:
-            api.ADMIN_LIMITER.fail(key)
-            api.ACCOUNT_LIMITER.fail(account)
+            await api._failed_login(api.ADMIN_LIMITER, key, api.ACCOUNT_LIMITER, account,
+                                    '姓名或密码不正确，或账号没有此入口权限', api.security.WINDOW_SECONDS)
         raise HTTPException(401, '姓名或密码不正确，或账号没有此入口权限')
     if privileged:
         api.ADMIN_LIMITER.reset(key)

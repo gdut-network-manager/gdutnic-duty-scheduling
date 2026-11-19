@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS member_accounts (
  student_id TEXT NOT NULL DEFAULT '',
  username TEXT PRIMARY KEY, password TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
- permissions TEXT NOT NULL DEFAULT '', group_id TEXT NOT NULL DEFAULT '', sso_id TEXT NOT NULL DEFAULT '', sso_auto_link_blocked INTEGER NOT NULL DEFAULT 0
+ permissions TEXT NOT NULL DEFAULT '', group_id TEXT NOT NULL DEFAULT '', sso_id TEXT NOT NULL DEFAULT '',
+ sso_auto_link_blocked INTEGER NOT NULL DEFAULT 0, must_change_password INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS login_sessions (
  id TEXT PRIMARY KEY, kind TEXT NOT NULL, username TEXT NOT NULL,
@@ -97,7 +98,8 @@ COLUMNS = {'shifts': {'special': 'INTEGER NOT NULL DEFAULT 0'},
                                'permissions': "VARCHAR(191) NOT NULL DEFAULT ''",
                                'group_id': "VARCHAR(64) NOT NULL DEFAULT ''",
                                'sso_id': "VARCHAR(64) NOT NULL DEFAULT ''",
-                               'sso_auto_link_blocked': 'TINYINT NOT NULL DEFAULT 0'},
+                               'sso_auto_link_blocked': 'TINYINT NOT NULL DEFAULT 0',
+                               'must_change_password': 'TINYINT NOT NULL DEFAULT 0'},
            'keycloak_links': {'linked_at': "VARCHAR(40) NOT NULL DEFAULT ''"},
            'login_sessions': {'sso_identity': "VARCHAR(64) NOT NULL DEFAULT ''", 'last_response': 'DOUBLE NOT NULL DEFAULT 0'},
            'attendance': {'status_override': "VARCHAR(16) NOT NULL DEFAULT ''", 'final_status': "VARCHAR(16) NOT NULL DEFAULT ''"},

@@ -35,5 +35,5 @@
    通过 environment.LOGIN_TRUSTED_PROXIES 配置受信任的直连代理 IP 或 CIDR。请确保最外层 Nginx 使用
    proxy_set_header {{ .Values.clientIpHeader }} $remote_addr;
 {{- else }}
-   打卡和外勤按直连地址判断。登录限流可从可信代理读取 X-Real-IP。
+   登录、打卡和外勤默认从可信代理读取 X-Real-IP，其他请求使用直连地址。
 {{- end }}

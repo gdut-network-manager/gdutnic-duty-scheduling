@@ -11,6 +11,7 @@ function renderMembers() {
     title.append(el('h2', '', member.username), el('p', 'member-student-id', member.student_id || '\u00a0'), el('p', '', member.active ? '账号已启用' : '账号已停用'));
     const tags = el('div', 'permission-tags' + (member.active ? '' : ' is-inactive'));
     tags.append(el('span', 'permission-tag', member.group_name || '会员'));
+    if (member.must_change_password) tags.append(el('span', 'permission-tag', '待设置密码'));
     if (member.sso_bound) tags.append(el('span', 'permission-tag', '已绑定 GDUTNIC'));
     title.append(tags);
     const actions = el('div', 'actions');
@@ -86,14 +87,31 @@ function openPermission(member) {
 }
 $('permissionGroupSelect').onchange = updateMemberGroupPreview;
 
+function showTemporaryPasswords(credentials) {
+  if (!credentials?.length) return;
+  const dialog = $('temporaryPasswordsDialog');
+  const field = $('temporaryPasswordsText');
+  const lines = credentials.map(({username, password}) => `${username}\t${password}`).join('\n');
+  field.value = dialog.open ? `${field.value}\n${lines}` : lines;
+  if (!dialog.open) dialog.showModal();
+}
+$('closeTemporaryPasswords').onclick = () => $('temporaryPasswordsDialog').close();
+$('temporaryPasswordsDialog').addEventListener('close', event => {
+  if (!event.currentTarget.open) $('temporaryPasswordsText').value = '';
+});
+
 function confirmMemberPasswordReset(username) {
   openDeleteConfirm({
     title: '确认重置密码',
-    body: `将「${username}」的密码恢复为初始密码 gg2017？该账号需要重新登录。`,
+    body: `为「${username}」生成新的临时密码？该账号的现有会话将失效。`,
     confirmLabel: '确认重置',
     confirmIcon: 'lock-reset',
     submit: () => api('/api/admin/members', 'PATCH', {username, reset_password: true}),
-    onDone: () => { $('membersStatus').textContent = `已重置「${username}」的密码，该账号需重新登录。`; },
+    onDone: async result => {
+      showTemporaryPasswords(result.temporary_passwords);
+      await loadMembers();
+      $('membersStatus').textContent = `已重置「${username}」的密码，该账号需重新登录。`;
+    },
   });
 }
 
@@ -120,11 +138,12 @@ $('memberForm').onsubmit = async e => {
   submit.disabled = true;
   try {
     const name = form.elements.username.value.trim();
-    await api('/api/admin/members', 'POST', {username:name});
+    const result = await api('/api/admin/members', 'POST', {username:name});
     // Close the dialog only after the request succeeds; errors stay visible inside it.
     $('memberEditor').close();
+    showTemporaryPasswords(result.temporary_passwords);
     await loadMembers();
-    $('membersStatus').textContent = `账号「${name}」已创建，初始密码为 gg2017。`;
+    $('membersStatus').textContent = `账号「${name}」已创建。`;
   } catch (err) { $('memberFormStatus').textContent = err.message; }
   finally { submit.disabled = false; }
 };
