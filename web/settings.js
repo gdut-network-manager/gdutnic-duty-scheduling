@@ -224,20 +224,32 @@ $('smtpForm').onsubmit = async e => {
   }
 };
 
-$('smtpTest').onclick = async () => {
-  const to = window.prompt('测试邮件收件地址', $('smtpFromAddress').value || '');
-  if (!to) return;
-  const button = $('smtpTest');
-  button.disabled = true;
-  $('smtpStatus').textContent = '正在发送测试邮件…';
+const smtpTestDialog = $('smtpTestDialog');
+const smtpTestForm = $('smtpTestForm');
+const smtpTestSubmit = smtpTestForm.querySelector('[type=submit]');
+const smtpTestClose = $('closeSmtpTest');
+$('smtpTest').onclick = () => {
+  smtpTestForm.elements.to.value = $('smtpFromAddress').value.trim();
+  $('smtpTestStatus').textContent = '';
+  smtpTestDialog.showModal();
+};
+smtpTestClose.onclick = () => smtpTestDialog.close();
+smtpTestDialog.addEventListener('cancel', event => {
+  if (smtpTestSubmit.disabled) event.preventDefault();
+});
+smtpTestForm.onsubmit = async event => {
+  event.preventDefault();
+  if (smtpTestSubmit.disabled) return;
+  smtpTestSubmit.disabled = smtpTestClose.disabled = true;
+  $('smtpTestStatus').textContent = '正在发送测试邮件…';
   try {
+    const to = smtpTestForm.elements.to.value.trim();
     const result = await api('/api/admin/smtp/test', 'POST', {to});
-    $('smtpStatus').textContent = `测试邮件已发送到 ${result.to}，请检查收件箱。`;
+    $('smtpTestStatus').textContent = `测试邮件已发送到 ${result.to}，请检查收件箱。`;
   } catch (err) {
-    $('smtpStatus').textContent = err.message;
-    return {status:err.status};
+    $('smtpTestStatus').textContent = err.message;
   } finally {
-    button.disabled = false;
+    smtpTestSubmit.disabled = smtpTestClose.disabled = false;
   }
 };
 

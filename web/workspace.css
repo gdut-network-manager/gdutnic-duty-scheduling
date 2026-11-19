@@ -1,0 +1,471 @@
+/* Layout and components used by both signed-in workspaces. */
+.mark {
+  width: 46.4px;
+  height: 46.4px;
+  padding: 4px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4.8px 14.4px rgba(24, 96, 120, 0.18);
+}
+.mark img {
+  width: 38.4px;
+  height: 38.4px;
+  object-fit: contain;
+  display: block;
+  background: transparent;
+}
+
+.card {
+  background: var(--md-surface-high);
+  border-radius: var(--md-radius-xl);
+  padding: 16px 14.4px;
+  margin-bottom: 11.2px;
+  box-shadow: var(--md-shadow);
+}
+.panel-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 3.2px 6.4px 6.4px;
+}
+.account-actions { flex-wrap: wrap; }
+.account-actions #changePassword { margin-left: auto; }
+.field-hidden { display: none !important; }
+.ga-nav-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  transition: opacity 180ms ease;
+}
+.ga-nav-item:hover::after {
+  opacity: 0.12;
+}
+.btn.icon-btn {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.ga-app {
+  display: grid;
+  /* Sidebar at 75% of the previous 324px width. */
+  grid-template-columns: 243px 1fr;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--md-surface);
+  opacity: 0;
+  transform: translateY(6.4px);
+  transition: opacity 320ms ease, transform 320ms ease;
+}
+.ga-app.is-visible {
+  opacity: 1;
+  transform: none;
+}
+.ga-app.is-leaving {
+  opacity: 0;
+  transform: translateY(6.4px);
+  pointer-events: none;
+}
+.ga-app[hidden] {
+  display: none !important;
+}
+.ga-nav {
+  display: flex;
+  flex-direction: column;
+  background: var(--md-surface-low);
+  padding: 16px 12.8px 12.8px;
+  min-height: 0;
+}
+.ga-brand {
+  display: flex;
+  align-items: center;
+  gap: 11.2px;
+  margin: 6.4px 6.4px 16px;
+  padding: 0;
+  color: var(--md-on-surface);
+}
+.ga-brand h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--md-on-surface);
+}
+.ga-brand .brand-sub {
+  margin: 3.2px 0 0;
+  color: var(--md-on-surface-variant);
+  font-size: 9.6px;
+}
+.ga-brand img {
+  width: 38.4px;
+  height: 38.4px;
+  object-fit: contain;
+}
+.ga-nav nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3.2px;
+  flex: 1;
+}
+.ga-nav-item {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--md-secondary);
+  text-align: left;
+  border-radius: 799.2px;
+  padding: 8px 12.8px;
+  font: inherit;
+  font-size: 11.2px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+.ga-nav-item.active {
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  font-weight: 600;
+}
+/* No side padding: the button's gap to the left edge equals its gap to the bottom edge (the sidebar's 12.8px padding). */
+.ga-nav .panel-footer {
+  margin-top: auto;
+  padding: 3.2px 0 0;
+}
+.ga-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14.4px 22.4px 19.2px;
+  background: var(--md-surface);
+}
+.ga-main-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+@media (max-width: 800px) {
+  .ga-app { grid-template-columns: 1fr; }
+  .ga-main { padding: 19.2px 14.4px 14.4px; }
+}
+
+:root[data-motion="reduced"] .ga-nav-item::after,
+:root[data-motion="reduced"] .ga-app {
+    transition-duration: 0.01ms;
+  }
+
+.ga-main-body{padding:9.6px 0 19.2px}
+.hero{display:flex;justify-content:space-between;align-items:center;gap:19.2px}
+/* The hero stays pinned while the page scrolls, with a blurred backdrop that fades into the content. */
+.hero{position:sticky;top:-9.6px;z-index:6;margin:0 0 22.4px;padding:19.2px 0 16px;
+  /* The scroller keeps 9.6px top padding; the negative offset closes that gap so no
+     scrolled content peeks above the pinned header. */
+  background:var(--md-surface);background:color-mix(in srgb, var(--md-surface) 92%, transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
+.hero::after{content:"";position:absolute;left:0;right:0;top:100%;height:22.4px;pointer-events:none;
+  background:linear-gradient(to bottom, color-mix(in srgb, var(--md-surface) 92%, transparent), transparent)}
+@supports not (background: color-mix(in srgb, red 50%, blue)){.hero{background:var(--md-surface)}
+  .hero::after{background:linear-gradient(to bottom, var(--md-surface), transparent)}}
+.hero h1{font-size:22.4px;font-weight:600;letter-spacing:-.02em;margin:6.4px 0 9.6px;color:var(--md-on-surface)}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12.8px;margin-bottom:12.8px}
+.section-head>div{display:flex;gap:8px}
+.shifts{display:grid;gap:12.8px}
+.card{background:var(--md-surface-high);border:0;border-radius:var(--md-radius-xl);padding:19.2px;box-shadow:var(--md-shadow)}
+.shift-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.time{font-size:19.2px;font-weight:600;color:var(--md-primary)}
+.location{margin-top:6.4px;font-size:11.2px;color:var(--md-on-surface-variant)}
+.empty{text-align:center;padding:51.2px 19.2px;background:var(--md-surface-low);border-radius:var(--md-radius-xl)}
+.empty h2{margin-bottom:8px}
+#status{color:var(--md-error);min-height:19.2px}
+.actions{display:flex;flex-wrap:wrap;gap:6.4px;margin-top:14.4px}
+@media(max-width:900px){.ga-app{grid-template-columns:162px 1fr}
+.hero{align-items:stretch;flex-direction:column}}
+@media(max-width:650px){.ga-main{padding:12.8px}
+.hero{gap:9.6px;margin-bottom:16px}
+.hero h1{font-size:20.8px}
+.hero p{margin:3.2px 0}
+.card{padding:16px}
+.shift-top{flex-wrap:wrap}
+.time{font-size:16.8px}}
+.ga-main,.ga-main-body{min-width:0}
+.range-head{margin-top:22.4px}
+/* Week/month stepping: a compact pair of arrows around the visible range. */
+.range-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.range-label{min-width:15em;text-align:center;font-variant-numeric:tabular-nums}
+@media(max-width:650px){
+  .range-head{flex-wrap:wrap;gap:8px}
+  .range-nav{width:100%;justify-content:space-between}
+  .range-label{min-width:0;flex:1;text-align:center}
+}
+.btn.icon-btn:disabled{opacity:1;color:var(--md-outline);background:var(--md-surface-low)}
+.btn.icon-btn:disabled::after{opacity:0}
+.week-board{display:flex;flex-direction:column;gap:8px;overflow-x:auto;padding-bottom:4.8px}
+.week-row{display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr));gap:12px;align-items:stretch}
+.week-head-row{align-items:end}
+.week-slot-label{font-size:11.2px;color:var(--md-secondary);font-weight:600;padding-top:12.8px;white-space:nowrap}
+.week-cell{display:flex;flex-direction:column;justify-content:stretch;min-width:0;padding:6.4px;border-radius:var(--md-radius-lg);background:var(--md-surface-low)}
+.week-cell.today{outline:1.6px solid var(--md-primary)}
+.week-cell-empty{min-height:1px}
+.week-day-head{font-size:11.2px;color:var(--md-secondary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.week-card{flex:1;display:flex;flex-direction:column;gap:2.4px;width:100%;text-align:left;border:0;border-radius:var(--md-radius-sm);padding:9.6px;font:inherit;font-size:11.2px;line-height:1.5;cursor:pointer;color:var(--md-on-surface)}
+.week-card-time{font-size:12px;font-weight:600}
+.week-card p{margin:0}
+@media(max-width:650px){.week-row{grid-template-columns:32px repeat(7,minmax(104px,1fr))}}
+
+.shift-timeline{width:100%;min-width:0;margin:0 0 12.8px;background:transparent;overflow:hidden;contain:layout paint}
+.shift-timeline svg{display:block;width:100%;overflow:hidden;font-family:inherit;font-size:12px;font-weight:300}
+.shift-timeline text{font-weight:300}
+#status:empty{display:none}
+/* The week board needs room for three names per card; keep it readable on desktop. */
+.week-day-head{min-width:0}
+/* Empty column boards should not stretch the whole row height. */
+.week-row { align-items: stretch; }
+/* Cards in the week board size to their content but stay equal within a row. */
+.week-cell { justify-content: flex-start; }
+
+/* Empty week cells stay blank so the board reads as a calendar, not a grid of bars. */
+.week-cell:not(:has(.week-card)) { background: transparent; padding: 0; }
+.week-cell:has(.week-card) { display: flex; }
+.week-card { align-self: stretch; }
+
+/* Put the content inset inside the scroller, keeping its track at the outer edge. */
+.ga-main { padding-right: 0; }
+.ga-main-body { padding-right: 22.4px; }
+/* The scroller clips at its padding box; this left gutter keeps card shadows from being cut off. */
+.ga-main-body { margin-left: -4px; padding-left: 4px; }
+.hero { margin-left: -4px; margin-right: -4px; padding-left: 4px; padding-right: 4px; }
+@media (max-width: 650px) {
+  .ga-main-body { padding-right: 12.8px; }
+}
+
+/* 1u is the rendered height of a regular duty row. */
+.week-board { --week-unit: 140px; }
+.week-row:not(.week-head-row):not(.week-special-row) { min-height: 140px; }
+.week-special-row { margin-top: max(0px, calc(var(--week-unit) - 8px)); }
+.week-special-row .week-cell { gap: 12.8px; background: transparent; padding: 0; }
+.week-special-row .week-card { flex: 0 0 auto; min-height: calc(var(--week-unit) - 12.8px); }
+
+/* Mobile shell: a top bar with the page title, and the sidebar as a left drawer.
+   The bar and scrim are created by nav-drawer.js; 800px matches its media query. */
+.mobile-bar, .nav-scrim { display: none; }
+@media (max-width: 800px) {
+  .ga-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .ga-main { padding: 0 0 12.8px 12.8px; }
+  .ga-main-body { padding-right: 12.8px; }
+  .mobile-bar { display: flex; align-items: center; gap: 6.4px; flex: 0 0 auto; height: 52px; margin: 0 12.8px 0 -6.4px; }
+  .mobile-bar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 600; color: var(--md-on-surface); }
+  .nav-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 40px; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--md-on-surface); cursor: pointer; }
+  .nav-toggle::before { width: 22px; height: 22px; flex-basis: 22px; }
+  .nav-toggle:hover { background: var(--md-surface-low); }
+  .nav-toggle:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+
+  .ga-nav {
+    position: fixed; inset: 0 auto 0 0; z-index: 90; box-sizing: border-box;
+    width: min(288px, 84vw); padding: 12.8px;
+    border-radius: 0 22.4px 22.4px 0;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .28);
+    transform: translateX(-102%); visibility: hidden;
+    transition: transform 240ms cubic-bezier(.2, 0, 0, 1), visibility 0s linear 240ms;
+  }
+  .ga-app.nav-open .ga-nav { transform: none; visibility: visible; transition-delay: 0s; }
+  .nav-scrim { display: block; position: fixed; inset: 0; z-index: 89; background: rgba(0, 0, 0, .42); opacity: 0; pointer-events: none; transition: opacity 240ms ease; }
+  .ga-app.nav-open .nav-scrim { opacity: 1; pointer-events: auto; }
+
+  .ga-brand { margin: 3.2px 3.2px 12.8px 6.4px; }
+  .ga-nav nav { min-height: 0; overflow-y: auto; overscroll-behavior: contain; gap: 2px; flex-wrap: nowrap; margin: -4px; padding: 4px; }
+  .ga-nav-item { flex: 0 0 auto; min-height: 44px; padding: 0 16px; font-size: 14px; }
+  .ga-nav .panel-footer { flex: 0 0 auto; padding: 9.6px 0 0; }
+  /* The bar already pins the page title, so the page header scrolls away with the content. */
+  .hero { position: relative; top: auto; padding-top: 9.6px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .hero::after { display: none; }
+}
+@media (max-width: 800px) {
+:root[data-motion="reduced"] .ga-nav,
+:root[data-motion="reduced"] .nav-scrim { transition: none; }
+
+}
+
+.ga-external-link { gap:8px;text-decoration:none; }
+.ga-external-link > span:first-child { min-width:0; }
+.ga-external-icon { display:inline-flex;align-items:center;margin-left:auto;flex-shrink:0; }
+.ga-external-icon[data-icon]::before { width:16px;height:16px;flex-basis:16px; }
+
+[data-icon="calendar-outline"] { --component-icon: url("/icon/components/calendar-outline.svg"); }
+[data-icon="calendar-week-outline"] { --component-icon: url("/icon/components/calendar-week-outline.svg"); }
+[data-icon="chevron-left"] { --component-icon: url("/icon/components/chevron-left.svg"); }
+[data-icon="chevron-right"] { --component-icon: url("/icon/components/chevron-right.svg"); }
+[data-icon="close"] { --component-icon: url("/icon/components/close.svg"); }
+[data-icon="content-save-outline"] { --component-icon: url("/icon/components/content-save-outline.svg"); }
+[data-icon="delete-outline"] { --component-icon: url("/icon/components/delete-outline.svg"); }
+[data-icon="logout"] { --component-icon: url("/icon/components/logout.svg"); }
+[data-icon="menu"] { --component-icon: url("/icon/components/menu.svg"); }
+[data-icon="map-marker-check-outline"] { --component-icon: url("/icon/components/map-marker-check-outline.svg"); }
+[data-icon="refresh"] { --component-icon: url("/icon/components/refresh.svg"); }
+
+[data-icon="open-in-new"] { --component-icon:url("/icon/components/open-in-new.svg"); }
+
+.ga-brand { gap: 6px; }
+.ga-brand h1 { white-space: nowrap; }
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-on-surface);
+  font: inherit;
+  cursor: pointer;
+}
+.theme-toggle[data-icon]::before { width:20px;height:20px;flex-basis:20px; }
+.theme-toggle:hover:not(:disabled) { background:color-mix(in srgb, currentColor 8%, transparent); }
+.theme-toggle:focus-visible { background:color-mix(in srgb, currentColor 10%, transparent);outline:2px solid currentColor;outline-offset:2px; }
+.theme-toggle:active:not(:disabled) { background:color-mix(in srgb, currentColor 12%, transparent); }
+.theme-toggle:disabled { cursor:progress;opacity:1; }
+[data-icon="weather-sunny"] { --component-icon: url("/icon/weather-sunny.svg"); }
+[data-icon="weather-night"] { --component-icon: url("/icon/weather-night.svg"); }
+[data-theme="dark"] .mark { background: var(--md-surface-high); }
+:root[data-theme="dark"] {
+  --schedule-error-container: var(--md-error-container);
+  --schedule-on-error-container: var(--md-on-error-container);
+  --schedule-success-container: var(--md-success-container);
+  --schedule-on-success-container: var(--md-on-success-container);
+  --schedule-warning-container: var(--md-warning-container);
+  --schedule-on-warning-container: var(--md-on-warning-container);
+  --schedule-primary-container: #004D63;
+  --schedule-on-primary-container: #BCE9FF;
+  --schedule-primary: #8AD0EE;
+  --schedule-success-outline: #376343;
+  --schedule-warning: #E9C349;
+  --schedule-warning-outline: #706023;
+  --schedule-surface-low: #171C1F;
+  --schedule-error: #FFB4AB;
+  --schedule-disabled-container: #2D3438;
+  --schedule-disabled-ink: #A0AAAF;
+  --schedule-surface-high: #262B2D;
+}
+[data-theme="dark"] .btn.danger {
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
+}
+/* SVG presentation attributes otherwise retain the light timeline colors. */
+[data-theme="dark"] .shift-timeline [fill="#235779"] { fill: var(--md-primary); }
+[data-theme="dark"] .shift-timeline [stroke="#235779"] { stroke: var(--md-primary); }
+[data-theme="dark"] .shift-timeline [fill="#7292a1"] { fill: var(--md-on-surface-variant); }
+[data-theme="dark"] .shift-timeline [fill="#932b37"],
+[data-theme="dark"] .shift-timeline [fill="#c62828"] { fill: var(--md-error); }
+[data-theme="dark"] .shift-timeline [fill="#b98100"] { fill: var(--schedule-warning); }
+:root:not([data-theme="dark"]) .card {
+  background: var(--md-surface-high);
+  border: 0;
+  box-shadow: var(--md-card-elevation);
+}
+:root:not([data-theme="dark"]) .card .card {
+  background: var(--md-surface-high);
+  border: 1px solid var(--md-card-outline);
+  box-shadow: none;
+}
+[data-theme="dark"] .card {
+  --md-surface-high: var(--md-surface);
+  --schedule-surface-high: var(--md-surface);
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  box-shadow: none;
+}
+:root body .m3-outlined-label { position: relative; display: block; padding: 0; }
+:root body .m3-outlined-label > :is(input, textarea, select) { display: block; width: 100%; margin: 0; }
+:root body .m3-field-caption {
+  position: absolute; z-index: 1; top: 21px; left: 9px;
+  max-width: calc(100% - 18px); padding: 0 3px;
+  transform: translateY(-50%); font-size: 12px; line-height: 18px;
+  background: transparent; color: var(--md-on-surface-variant);
+  pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  transition: top 150ms ease, font-size 150ms ease, color 150ms ease;
+}
+:root body .m3-outlined-label:focus-within > .m3-field-caption { color: var(--md-primary); }
+
+/* Rest inside an empty field, then float on focus or when it has a value. */
+:root body .m3-outlined-label:focus-within > .m3-field-caption,
+:root body .m3-outlined-label:has(> input:not(:placeholder-shown)) > .m3-field-caption,
+:root body .m3-outlined-label:has(> textarea:not(:placeholder-shown)) > .m3-field-caption,
+:root body .m3-outlined-label:has(> select option:checked:not([value=""])) > .m3-field-caption {
+  top: 0; font-size: 9px; line-height: 12px; background: transparent;
+}
+:root body .m3-outlined-label:not(:focus-within) > :is(input, textarea)::placeholder { color: transparent; }
+:root[data-motion="reduced"] body .m3-field-caption { transition: none; }
+:root body .m3-outlined-label:has(> select:disabled) > .m3-field-caption { opacity: .38; }
+
+/* Cut the top stroke to the measured floating label width instead of painting over it. */
+:root body .m3-outlined-label:is(:focus-within,
+  :has(> input:not(:placeholder-shown)),
+  :has(> textarea:not(:placeholder-shown)),
+  :has(> select option:checked:not([value=""]))) > :is(input, textarea, select) {
+  clip-path: polygon(0 0, 9px 0, 9px 2px,
+    calc(9px + var(--m3-notch-width, 0px)) 2px,
+    calc(9px + var(--m3-notch-width, 0px)) 0,
+    100% 0, 100% 100%, 0 100%);
+}
+:root body .m3-outlined-label > .m3-field-caption { background: transparent; }
+:root body label.m3-outlined-label > :is(input, textarea, select) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+:root body .m3-outlined-label:is(:focus-within,
+  :has(> input:not(:placeholder-shown)),
+  :has(> textarea:not(:placeholder-shown)),
+  :has(> select option:checked:not([value=""]))) > .m3-field-caption {
+  top: 0;
+  transform: translateY(-50%);
+}
+
+:root[data-motion="full"] .ga-nav-item {
+  transition: background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+    color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+    box-shadow var(--motion-effects-duration) var(--motion-effects),
+    border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
+}
+:root[data-motion="full"] .ga-nav-item::after { transition: opacity 150ms linear; }
+:root[data-motion="full"] :is(.m3-outlined-label input,.m3-outlined-label textarea) {
+  transition: outline-color 150ms linear,background-color 150ms linear,border-color 150ms linear;
+}
+:root[data-motion="full"] .m3-field-caption {
+  transition: top 150ms cubic-bezier(.2,0,0,1),transform 150ms cubic-bezier(.2,0,0,1),color 150ms linear,background-color 150ms linear;
+}
+@media(max-width:800px) {
+  :root[data-motion="full"] .ga-nav { transition:transform var(--motion-spatial-duration) var(--motion-spatial),visibility 0s linear var(--motion-spatial-duration); }
+  :root[data-motion="full"] .ga-app.nav-open .ga-nav { transition-delay:0s; }
+  :root[data-motion="full"] .nav-scrim { transition:opacity var(--motion-effects-duration) linear; }
+}
+:root[data-motion="full"] :is(.theme-toggle,.nav-toggle):active { border-radius:12px; }
+:root[data-motion="full"] .ga-app {
+  transition:opacity var(--motion-effects-slow-duration) var(--motion-effects-slow),
+    transform var(--motion-spatial-duration) var(--motion-spatial);
+}
+:root[data-motion="full"] .ga-nav-item::after {
+  transition:opacity var(--motion-effects-fast-duration) var(--motion-effects-fast);
+}
+:root[data-motion="full"] .m3-field-caption {
+  transition:top var(--motion-spatial-fast-duration) var(--motion-spatial-fast),transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),color var(--motion-effects-fast-duration) var(--motion-effects-fast),background-color var(--motion-effects-fast-duration) var(--motion-effects-fast);
+}

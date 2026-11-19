@@ -16,7 +16,9 @@ function renderMembers() {
     const actions = el('div', 'actions');
     actions.append(
       ...(memberMeta.can_grant ? [button('更改权限', 'secondary', () => openPermission(member))] : []),
-      button('更改密码', 'secondary', () => openPassword(member)),
+      member.username === memberMeta.me
+        ? button('更改密码', 'secondary', openPasswordEditor)
+        : button('重置密码', 'delete', () => confirmMemberPasswordReset(member.username)),
       button('更改学号', 'secondary', () => openStudentId(member)),
       button('变更账号状态', 'delete', () => openMemberState(member))
     );
@@ -84,13 +86,15 @@ function openPermission(member) {
 }
 $('permissionGroupSelect').onchange = updateMemberGroupPreview;
 
-function openPassword(member) {
-  if ($('memberPasswordForm').dataset.busy === 'true') return;
-  $('memberPasswordForm').reset();
-  $('memberPasswordTitle').textContent = `更改密码 · ${member.username}`;
-  $('memberPasswordStatus').textContent = '';
-  $('memberPasswordForm').dataset.username = member.username;
-  $('memberPasswordDialog').showModal();
+function confirmMemberPasswordReset(username) {
+  openDeleteConfirm({
+    title: '确认重置密码',
+    body: `将「${username}」的密码恢复为初始密码 gg2017？该账号需要重新登录。`,
+    confirmLabel: '确认重置',
+    confirmIcon: 'lock-reset',
+    submit: () => api('/api/admin/members', 'PATCH', {username, reset_password: true}),
+    onDone: () => { $('membersStatus').textContent = `已重置「${username}」的密码，该账号需重新登录。`; },
+  });
 }
 
 $('membersTab').onclick = () => {
@@ -109,7 +113,6 @@ $('memberSearch').addEventListener('input', e => {
 $('addMember').onclick = () => { $('memberForm').reset(); $('memberFormStatus').textContent = ''; $('memberEditor').showModal(); };
 $('closeMember').onclick = () => $('memberEditor').close();
 $('closePermission').onclick = () => $('permissionDialog').close();
-$('closeMemberPassword').onclick = () => $('memberPasswordDialog').close();
 
 $('memberForm').onsubmit = async e => {
   e.preventDefault();
@@ -140,42 +143,6 @@ $('permissionForm').onsubmit = async e => {
   } catch (err) { $('permissionStatus').textContent = err.message; }
   finally { submit.disabled = false; }
 };
-
-async function saveMemberPassword(reset = false) {
-  const form = $('memberPasswordForm');
-  if (form.dataset.busy === 'true') return;
-  const name = form.dataset.username;
-  if (reset && !confirm(`将「${name}」的密码重置为 gg2017？`)) return;
-  form.dataset.busy = 'true';
-  const buttons = form.querySelectorAll('button');
-  buttons.forEach(button => { button.disabled = true; });
-  $('memberPasswordStatus').textContent = '';
-  try {
-    if (reset) {
-      await api('/api/admin/members', 'PATCH', {username: name, reset_password: true});
-    } else {
-      await api('/api/admin/members/password', 'PUT', {
-        username: name, password: form.elements.password.value,
-      });
-    }
-    $('memberPasswordDialog').close();
-    $('membersStatus').textContent = reset
-      ? `已将「${name}」的密码重置为 gg2017，该账号需重新登录。`
-      : `已更改「${name}」的密码，该账号需重新登录。`;
-  } catch (err) { $('memberPasswordStatus').textContent = err.message; }
-  finally {
-    delete form.dataset.busy;
-    buttons.forEach(button => { button.disabled = false; });
-  }
-}
-$('memberPasswordForm').onsubmit = e => {
-  e.preventDefault();
-  saveMemberPassword();
-};
-$('resetMemberPassword').onclick = () => saveMemberPassword(true);
-$('memberPasswordDialog').addEventListener('cancel', e => {
-  if ($('memberPasswordForm').dataset.busy === 'true') e.preventDefault();
-});
 
 $('cleanupMembers').onclick = async () => {
   if (!confirm('确认清理默认会员组中未出现在已保存的每周排班或任何已生成排班中的用户？删除账号无法撤销，已有排班和签到记录会保留。')) return;

@@ -16,7 +16,7 @@ function syncClock(info) {
 window.syncClock = syncClock;
 const today = () => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(clockNow()));
 let member = null;
-let items = [], editing = null, editingSpecial = null, setup = true, generation = 0, rules = null;
+let items = [], editing = null, editingSpecial = null, generation = 0, rules = null;
 async function api(url, method='GET', body) {
   const r = await fetch(url, {method, headers:body ? {'Content-Type':'application/json'} : {}, body:body ? JSON.stringify(body) : undefined});
   const data = await r.json();
@@ -24,15 +24,6 @@ async function api(url, method='GET', body) {
   return data;
 }
 function el(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text !== undefined)n.textContent=text; return n; }
-// 登录页用户名的两种状态：登录时必填，首次注册时可选（留空即用内置名称）。
-function syncRootNameField(field, setup) {
-  const label = field.closest('label');
-  if (label) label.hidden = false;
-  field.required = !!setup;
-  field.placeholder = setup ? ' ' : '原始管理员';
-  if (!setup) field.value = '';
-}
-if (typeof module === 'object' && module.exports) module.exports = {syncRootNameField};
 // Semantic icons for card actions; CSS masks inherit each button's current colour.
 const ACTION_ICONS = {
   '编辑班次': 'pencil-outline', '编辑': 'pencil-outline',
@@ -149,13 +140,10 @@ if($('day')){$('day').value=today();$('day').onchange=load;}if(admin){
   if(editingSpecial!==null){const saved=editingSpecial;await api('/api/admin/special-schedules'+(editingSpecial?'/'+editingSpecial:''),editingSpecial?'PUT':'POST',body);$('editor').close();await loadSpecials();$('specialStatus').textContent=saved?'特殊排班已更新。':'特殊排班已添加。';}
   else{await api('/api/admin/schedules'+(editing?'/'+editing:''),editing?'PUT':'POST',body);if($('day'))$('day').value=body.day;$('editor').close();await load();}
 }catch(err){$('formStatus').textContent=err.message;}finally{b.disabled=false;}};
-  $('authForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;$('authStatus').textContent='';$('authSubmit').disabled=true;try{await api('/api/admin/'+(setup?'login':'register'),'POST',Object.fromEntries(new FormData(form)));form.reset();await boot();}catch(err){$('authStatus').textContent=err.message;}finally{$('authSubmit').disabled=false;}};
-  $('logout').onclick=async()=>{try{await api('/api/admin/logout','POST');await boot();}catch(e){$('status').textContent=e.message;}};
-  async function boot(){try{const state=await api('/api/admin/status');setup=state.setup;
+  $('logout').onclick = () => logout('admin');
+  async function boot(){try{const state=await api('/api/admin/status');
+    if (!state.logged_in) { location.reload(); return; }
     window.isRootAdmin = !!state.root;
-    // 首次注册时可自定义原始管理员名称，留空则由服务端使用内置名称「原始管理员」。
-    const userField = $('authForm').querySelector('[name=username]');
-    if (userField) syncRootNameField(userField, setup);
     if ($('rootPasswordForm')) $('rootPasswordForm').hidden = !state.root;
     // Older backends do not send `permissions`; treat that as full access rather than hiding every menu.
     syncClock(state.now);
@@ -167,11 +155,11 @@ if($('day')){$('day').value=today();$('day').onchange=load;}if(admin){
     window.canClock = !Array.isArray(window.adminPermissions) || window.adminPermissions.includes('clock');
     window.canSmtp = !Array.isArray(window.adminPermissions) || window.adminPermissions.includes('smtp');
     window.applySettingsPermissions?.();
-    if (typeof window.applyPermissions === 'function') window.applyPermissions(window.adminPermissions);$('authTitle').textContent=setup?'管理员登录':'创建原始管理员';
-    if ($('authHint')) $('authHint').textContent = setup
-      ? '登录后维护班次与值班人员，查看签到记录。'
-      : '首次创建「原始管理员」，拥有不可更改的最高权限；可自定义名称，留空则使用默认名称。';
-    $('authSubmit').textContent=setup?'登录':'创建原始管理员';document.body.classList.toggle('auth-pending',!state.logged_in);$('authCard').hidden=state.logged_in;$('workspace').hidden=!state.logged_in;$('logout').hidden=!state.logged_in;if(state.logged_in)await load();}catch(e){$('authStatus').textContent=e.message;}}
+    if (typeof window.applyPermissions === 'function') window.applyPermissions(window.adminPermissions);
+    $('workspace').hidden = false;
+    $('logout').hidden = false;
+    await load();
+  }catch(e){$('status').textContent=e.message;}}
   boot();
 }else bootMember();
 function updateCheckInButtons() {
@@ -236,45 +224,59 @@ function on(id, helper) {
 async function bootMember() {
   try {
     const state = await api('/api/member/status');
+    if (!state.logged_in) { $('workspace').hidden = true; location.reload(); return; }
     window.setNetworkAccess?.(state.network_access);
     rules = state.rules;
-    member = state.logged_in ? state : null;
-    document.body.classList.toggle('auth-pending', !member);
-    if ($('memberAuth')) $('memberAuth').hidden = !!member;
-    $('workspace').hidden = !member;
-    if (member) {
-      syncClock(state.now);
-      if ($('memberGreeting')) $('memberGreeting').textContent = member.username+'，欢迎回来';
-      applyMemberPermissions(state.permissions || []);
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadCurrentMemberPage, {once:true});
-      else await loadCurrentMemberPage();
-    }
-    else { ++generation; items=[]; window.updateShiftTimeline([]); $('shifts').replaceChildren(); }
-  } catch (err) { $('memberLoginStatus').textContent=err.message; }
+    member = state;
+    $('workspace').hidden = false;
+    syncClock(state.now);
+    if ($('memberGreeting')) $('memberGreeting').textContent = member.username+'，欢迎回来';
+    applyMemberPermissions(state.permissions || []);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadCurrentMemberPage, {once:true});
+    else await loadCurrentMemberPage();
+  } catch (err) { $('status').textContent = err.message; }
 }
-if (!admin) {
-  on('memberLoginForm', ['onsubmit', async e => {
-    e.preventDefault(); const form=e.currentTarget, submit=form.querySelector('[type=submit]');
-    submit.disabled=true; if ($('memberLoginStatus')) $('memberLoginStatus').textContent='';
-    try { await api('/api/member/login','POST',Object.fromEntries(new FormData(form))); form.reset(); await bootMember(); }
-    catch(err) { if ($('memberLoginStatus')) $('memberLoginStatus').textContent=err.message; }
-    finally { submit.disabled=false; }
-  }]);
-  on('memberLogout', ['onclick', async () => {
-    try { await api('/api/member/logout','POST'); await bootMember(); }
-    catch(err) { if ($('status')) $('status').textContent=err.message; }
-  }]);
-  on('changePassword', ['onclick', () => {
-    if (!$('passwordForm')) return;
-    $('passwordForm').reset(); $('passwordStatus').textContent=''; $('passwordEditor').showModal();
-  }]);
-  on('closePassword', ['onclick', () => $('passwordEditor').close()]);
-  $('passwordForm') && ($('passwordForm').onsubmit = async e => {
-    e.preventDefault(); const form=e.currentTarget, submit=form.querySelector('[type=submit]'); submit.disabled=true;
-    try { await api('/api/member/password','POST',Object.fromEntries(new FormData(form))); form.reset(); $('passwordEditor').close(); $('status').textContent='密码已更新。'; }
-    catch(err) { $('passwordStatus').textContent=err.message; }
-    finally { submit.disabled=false; }
-  });
+async function logout(role) {
+  try {
+    await api('/api/' + role + '/logout', 'POST');
+    $('workspace').hidden = true;
+    location.reload();
+  } catch (err) { $('status').textContent = err.message; }
+}
+if (!admin) on('memberLogout', ['onclick', () => logout('member')]);
+
+const passwordForm = $('passwordForm'), passwordEditor = $('passwordEditor');
+function openPasswordEditor() {
+  if (!passwordForm || passwordForm.querySelector('[type=submit]').disabled) return;
+  passwordForm.reset();
+  $('passwordStatus').textContent = '';
+  passwordEditor.showModal();
+}
+if (passwordForm && passwordEditor) {
+  const submit = passwordForm.querySelector('[type=submit]');
+  const message = $('passwordStatus');
+  $('changePassword').onclick = openPasswordEditor;
+  $('closePassword').onclick = () => passwordEditor.close();
+  passwordForm.onsubmit = async event => {
+    event.preventDefault();
+    if (submit.disabled) return;
+    submit.disabled = true;
+    message.textContent = '';
+    try {
+      const role = admin ? 'admin' : 'member';
+      await api('/api/' + role + '/password', 'POST', Object.fromEntries(new FormData(passwordForm)));
+      passwordForm.reset();
+      if (admin) message.textContent = '密码已更新。';
+      else {
+        passwordEditor.close();
+        $('status').textContent = '密码已更新。';
+      }
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      submit.disabled = false;
+    }
+  };
 }
 
 async function refreshAdminPermissions() {

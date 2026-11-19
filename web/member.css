@@ -1,0 +1,345 @@
+/* Member workspace. */
+/* From Uiverse.io by ryota1231 */
+.animated-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3.2px;
+  padding: 12.8px 28.8px;
+  min-width: 163.2px;
+  width: 163.2px;
+  box-sizing: border-box;
+  border: 3.2px solid transparent;
+  font-size: 12.8px;
+  background-color: var(--md-surface-high);
+  border-radius: 25.6px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--md-primary);
+  box-shadow: 0 0 0 1.6px var(--md-primary);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    color 600ms cubic-bezier(0.23, 1, 0.32, 1),
+    background-color 600ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-radius 600ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 600ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 250ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.animated-button .arr-1 {
+  right: 12.8px;
+  opacity: 1;
+}
+.animated-button .arr-2 {
+  left: -25%;
+  opacity: 0;
+}
+.animated-button .circle {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  background: var(--md-primary-container);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 800ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-radius 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.animated-button .text {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  width: 6em;
+  text-align: center;
+  transform: translateX(-9.6px);
+  transition:
+    transform 800ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 800ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 800ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.animated-button:is(:hover, .is-active):not(.is-error) {
+  box-shadow: 0 0 0 9.6px transparent;
+  color: var(--md-animated-hover-ink, #212121);
+  border-radius: 9.6px;
+}
+.animated-button:is(:hover, .is-active):not(.is-error) .arr-1 {
+  right: -25%;
+}
+.animated-button:is(:hover, .is-active):not(.is-error) .arr-2 {
+  left: 12.8px;
+  opacity: 1;
+}
+.animated-button:is(:hover, .is-active):not(.is-error) .text {
+  transform: translateX(9.6px);
+}
+.animated-button:active {
+  scale: 0.95;
+  box-shadow: 0 0 0 3.2px var(--md-primary-container);
+}
+.animated-button:is(:hover, .is-active):not(.is-error) .circle {
+  opacity: 1;
+}
+
+.member-hero{position:sticky;top:-9.6px;z-index:6;margin:0 0 19.2px;padding:19.2px 0 14.4px;
+  background:var(--md-surface);background:color-mix(in srgb, var(--md-surface) 92%, transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
+.member-hero::after{content:"";position:absolute;left:0;right:0;top:100%;height:19.2px;pointer-events:none;
+  background:linear-gradient(to bottom, color-mix(in srgb, var(--md-surface) 92%, transparent), transparent)}
+.member-hero h1{margin:0}
+.badge{display:inline-flex;align-items:center;background:var(--md-secondary-container);color:var(--md-on-primary-container);border-radius:999px;padding:5.6px 12px;font-size:11.2px;line-height:1.4;white-space:nowrap}
+.members{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:16px;border-top:0.8px solid var(--md-surface-low)}
+.member{display:inline-flex;align-items:center;background:var(--md-surface-low);color:var(--md-on-surface-variant);padding:6.4px 12px;border-radius:999px;font-size:11.2px;line-height:1.4;white-space:nowrap}
+.member.checked{background:var(--md-primary-container);color:var(--md-on-primary-container)}
+/* Late/absent only recolour the chip; the label stays accurate to the check-in record. */
+.member.late,.member.checked.late{background:var(--schedule-warning-container, #fff3c4);color:var(--schedule-on-warning-container, #8a6000)}
+.member.absent,.member.checked.absent{background:var(--schedule-error-container, #ffdcdc);color:var(--schedule-on-error-container, #a41212)}
+.member.pending{background:var(--md-surface-low);color:var(--md-on-surface-variant)}
+.check-form{display:flex;align-items:center;gap:9.6px;margin-top:16px}
+.check-form select{flex:1;min-width:0}
+@media(max-width:900px){.member-hero{flex-direction:row;align-items:center}}
+@media(max-width:650px){.check-form{flex-direction:column}}
+#passwordStatus{color:var(--md-error);min-height:19.2px}
+
+/* Field duty registration. */
+.field-card{margin-top:19.2px;max-width:640px;display:flex;flex-direction:column;gap:12.8px}
+.field-card h2{margin-bottom:0}
+#fieldButton{align-self:flex-start}
+/* Height tracks the check-in button: a hidden strut at its font size sets the line, while the label keeps its own size. */
+#fieldButton{padding-block:10.4px}
+#fieldButton::before{content:"签";font-size:13.6px;width:0;margin-right:-4px;overflow:hidden;visibility:hidden}
+#fieldButton .text{line-height:.85}
+#fieldStatus{color:var(--md-on-surface-variant);min-height:19.2px;line-height:1.7}
+
+/* Field-duty button: from Uiverse.io by ryota1231, with a three-stage label and a
+   locked green "registered" state. */
+.animated-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 36px;
+  border: 4px solid;
+  border-color: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  background-color: var(--md-surface-high);
+  border-radius: 100px;
+  font-weight: 600;
+  color: var(--schedule-primary, #1f387e);
+  box-shadow: 0 0 0 2px var(--schedule-surface-high, #ffffff);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.animated-button svg {
+  position: absolute;
+  width: 24px;
+  fill: var(--schedule-primary, #1f387e);
+  z-index: 9;
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.animated-button .arr-1 { right: 16px; }
+.animated-button .arr-2 { left: -25%; }
+.animated-button .circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background-color: var(--schedule-primary-container, #c5e5e4);
+  border-radius: 50%;
+  opacity: 0;
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.animated-button .text {
+  position: relative;
+  z-index: 1;
+  transform: translateX(-12px);
+  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.animated-button:hover {
+  box-shadow: 0 0 0 12px transparent;
+  color: var(--schedule-on-primary-container, #212121);
+  border-radius: 12px;
+}
+.animated-button:hover .arr-1 { right: -25%; }
+.animated-button:hover .arr-2 { left: 16px; }
+.animated-button:hover .text { transform: translateX(12px); }
+.animated-button:hover svg { fill: var(--schedule-primary, #1f387e); }
+.animated-button:active {
+  scale: 0.95;
+  box-shadow: 0 0 0 4px var(--schedule-warning-outline, #f5c518);
+}
+/* State 0 (点击登记): hovering previews the pending yellow. */
+.animated-button:hover .circle { width: 220px; height: 220px; opacity: 1; background-color: var(--schedule-warning-container, #ffe9a8); }
+.animated-button:hover { color: var(--schedule-on-warning-container, #7a5b00); }
+/* Locked success state:浅绿配色，文字居中，不再响应悬停动画。 */
+.animated-button.registered,
+.animated-button.registered:hover,
+.animated-button.registered:active {
+  background-color: var(--schedule-success-container, #c8efc8);
+  color: var(--schedule-on-success-container, #1f5b25);
+  border-radius: 12px;
+  box-shadow: 0 0 0 4px var(--schedule-success-outline, #a7dfa7);
+  cursor: default;
+  scale: 1;
+}
+/* State 2 (登记完成): frozen in the pressed look; hover keeps the light green surface. */
+.animated-button.registered:hover .circle,
+.animated-button.registered .circle { width: 20px; height: 20px; opacity: 0; background-color: var(--schedule-success-container, #c8efc8); }
+.animated-button.registered:hover { background-color: var(--schedule-success-container, #c8efc8); color: var(--schedule-on-success-container, #1f5b25); border-radius: 12px; }
+.animated-button.registered:hover svg,
+.animated-button.registered svg { display: none; }
+.animated-button.registered:hover .text,
+.animated-button.registered .text { transform: none; }
+.animated-button.registered:disabled { opacity: 1; }
+
+/* Check-in variant: fits inside a shift card, and looks inert while the window is closed. */
+.animated-button.check-in-button{padding:10.4px 28.8px;font-size:13.6px;background:var(--md-surface-high)}
+.animated-button.check-in-button .text{transform:translateX(-8px)}
+.animated-button.check-in-button:hover .text{transform:translateX(8px)}
+.animated-button.check-in-button:enabled:hover{background:var(--schedule-success-container, #c8efc8);color:var(--schedule-on-success-container, #1f5b25)}
+.animated-button.check-in-button:enabled:hover .circle{background-color:var(--schedule-success-container, #c8efc8)}
+.animated-button.check-in-button:enabled:hover svg{fill:currentColor}
+.animated-button.check-in-button:disabled,
+.animated-button.check-in-button.is-locked{
+  background:var(--md-surface-low);color:var(--md-secondary);box-shadow:none;
+  border-radius:12px;cursor:not-allowed;scale:1;opacity:.75}
+.animated-button.check-in-button:disabled svg,
+.animated-button.check-in-button.is-locked svg{display:none}
+.animated-button.check-in-button:disabled .circle,
+.animated-button.check-in-button.is-locked .circle{opacity:0;width:20px;height:20px}
+.animated-button.check-in-button:disabled .text,
+.animated-button.check-in-button.is-locked .text{transform:none}
+.animated-button.check-in-button.registered{background:var(--schedule-success-container, #c8efc8);color:var(--schedule-on-success-container, #1f5b25);box-shadow:0 0 0 4px var(--schedule-success-outline, #a7dfa7);
+  opacity:1;cursor:default}
+/* The compact variant's hover shift must not win over the frozen registered look. */
+.animated-button.check-in-button.registered:hover .text{transform:none}
+.animated-button.check-in-button.registered:hover .circle{opacity:0;width:20px;height:20px}
+
+/* Field duty button: pending state is yellow; confirmed stays green and locked. */
+.animated-button.pending,
+.animated-button.pending:hover,
+.animated-button.pending:active {
+  background-color: var(--schedule-warning-container, #ffe9a8);
+  color: var(--schedule-on-warning-container, #7a5b00);
+  border-radius: 12px;
+  box-shadow: 0 0 0 4px var(--schedule-warning-outline, #f0d68a);
+  cursor: default;
+  scale: 1;
+}
+/* State 1 (等待确认): frozen in the pressed look; hover changes nothing. */
+.animated-button.pending .circle,
+.animated-button.pending:hover .circle { width: 20px; height: 20px; opacity: 0; background-color: var(--schedule-warning, #f5c518); }
+.animated-button.pending svg,
+.animated-button.pending:hover svg { display: none; }
+.animated-button.pending .text,
+.animated-button.pending:hover .text { transform: none; }
+.animated-button.pending:disabled { opacity: 1; }
+
+/* 外勤确认 page */
+.badge.confirmed{background:var(--schedule-success-container, #c8efc8);color:var(--schedule-on-success-container, #1f5b25)}
+.btn.confirmed,.btn.confirmed:disabled{background:var(--schedule-success-container, #c8efc8);color:var(--schedule-on-success-container, #1f5b25);opacity:1}
+
+#fieldConfirmStatus{min-height:19.2px;color:var(--md-primary);line-height:1.7}
+
+/* 外勤确认 card: confirm button on the left, delete pushed to the right. */
+.field-pending-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12.8px}
+.field-pending-actions .animated-button{padding:10.4px 28.8px;font-size:13.6px}
+.field-pending-actions .animated-button .text{transform:translateX(-8px)}
+.field-pending-actions .animated-button:hover .text{transform:translateX(8px)}
+.field-pending-actions .btn.danger{margin-left:auto}
+.member-hero { margin-left: -4px; margin-right: -4px; padding-left: 4px; padding-right: 4px; }
+
+/* The closed-window label is longer than the shared animated button's fixed width. */
+.animated-button.check-in-button {
+  width: max-content;
+  min-width: 163.2px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.animated-button.check-in-button .text { width: auto; white-space: normal; overflow-wrap: anywhere; flex-shrink: 1; }
+.animated-button.check-in-button { max-width: 100%; min-width: min(163.2px, 100%); }
+
+.member-week-board .member-schedule-card,
+.member-week-board .member-schedule-card:hover {
+  background: var(--schedule-primary-container, #dbeefd);
+  color: var(--schedule-on-primary-container, #17495e);
+  cursor: default;
+  outline: none;
+}
+.member-schedule-name { display: block; font-size: 11.2px; line-height: 1.7; overflow-wrap: anywhere; }
+.animated-button:is(.network-blocked, .permission-blocked):disabled { width: max-content; justify-content: center; background: var(--schedule-disabled-container, #e1e6e9); color: var(--schedule-disabled-ink, #737d83); box-shadow: none; opacity: 1; cursor: not-allowed; scale: 1; }
+.animated-button:is(.network-blocked, .permission-blocked) .circle { display: none; }
+.animated-button:is(.network-blocked, .permission-blocked):disabled svg { display: none; }
+.animated-button:is(.network-blocked, .permission-blocked):disabled .text { width: auto; flex-shrink: 0; transform: none; text-align: center; white-space: nowrap; transition: none; }
+
+#dutyPage .member-field-card { max-width: none; margin: 0 0 24px; }
+.member-field-card .section-head { margin-bottom: 0; }
+.member-field-card .badge { gap: 4px; }
+.member-field-card > p { margin: 0; }
+.member-field-card #fieldStatus:empty { display: none; }
+
+/* Member page: the two card titles sit 3px higher; nothing else in the cards moves. */
+.member-field-card .section-head h2,
+body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
+
+@media (max-width: 800px) {
+  .member-hero {
+    position: relative;
+    top: auto;
+    padding-top: 9.6px;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (max-width: 650px) {
+  .member-hero { margin-bottom: 16px; }
+}
+
+/* Idle buttons keep their hover emphasis; committed states remain locked.
+   This control deliberately stays on the traditional ease-out curve instead of the
+   shared expressive springs: it animates a sweep, not a spatial retarget. */
+:root[data-motion="full"] .animated-button {
+  transition:background-color var(--animated-button-state-duration) var(--animated-button-ease),color var(--animated-button-state-duration) var(--animated-button-ease),border-radius var(--animated-button-state-duration) var(--animated-button-ease),box-shadow var(--animated-button-state-duration) var(--animated-button-ease);
+}
+.animated-button:not(.registered):not(.pending):not(:disabled) .circle {
+  width:220px;height:220px;opacity:0;transform:translate(-50%,-50%) scale(.09);
+  transition:transform var(--animated-button-move-duration) var(--animated-button-ease),opacity var(--animated-button-move-duration) var(--animated-button-ease);
+}
+.animated-button:not(.registered):not(.pending):not(:disabled):hover .circle,
+.animated-button:not(.registered):not(.pending):not(:disabled):focus-visible .circle {
+  opacity:1;transform:translate(-50%,-50%) scale(1);
+}
+.animated-button:not(.registered):not(.pending):not(:disabled):hover,
+.animated-button:not(.registered):not(.pending):not(:disabled):focus-visible {
+  border-radius:12px;box-shadow:0 0 0 4px var(--schedule-warning-outline, #f5c518);
+  color:var(--schedule-on-warning-container, #7a5b00);
+}
+.animated-button.check-in-button:not(.registered):not(:disabled):hover,
+.animated-button.check-in-button:not(.registered):not(:disabled):focus-visible {
+  color:var(--schedule-on-success-container, #1f5b25);
+  box-shadow:0 0 0 4px var(--schedule-success-outline, #a7dfa7);
+}
+.animated-button:not(.registered):not(.pending):not(:disabled) svg { fill:currentColor; }
+:root[data-motion="full"] .animated-button :is(svg,.text) { transition:transform var(--animated-button-move-duration) var(--animated-button-ease); }
+.animated-button .arr-1 { right:16px;transform:translateX(0); }
+.animated-button .arr-2 { left:16px;transform:translateX(-64px); }
+.animated-button:not(.registered):not(.pending):not(:disabled):hover .arr-1 { right:16px;transform:translateX(64px); }
+.animated-button:not(.registered):not(.pending):not(:disabled):hover .arr-2 { left:16px;transform:translateX(0); }
+.animated-button:not(.registered):not(.pending):not(:disabled):active { scale:.97; }
+
+:root {
+  /* The registration/check-in button keeps its original ease-out curve:
+     its arrow/circle sweep is a single long gesture, not a spring. */
+  --animated-button-ease: cubic-bezier(.23, 1, .32, 1);
+  --animated-button-move-duration: 800ms;
+  --animated-button-state-duration: 600ms;
+}

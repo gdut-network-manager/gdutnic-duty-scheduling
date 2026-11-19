@@ -30,16 +30,17 @@ function renderPermissionGroups() {
     save.disabled = true;
     actions.append(save);
     if (!group.default) {
-      const remove = button('删除权限组', 'delete', async () => {
-        if (!confirm(`删除权限组「${group.name}」？组内 ${group.member_count} 位成员将自动移入会员组。`)) return;
-        remove.disabled = true;
-        try {
-          await api('/api/admin/permission-groups/' + encodeURIComponent(group.id), 'DELETE');
-          await refreshAdminPermissions();
-          if (window.adminPermissions.includes('permission_groups')) await loadPermissionGroups();
-        } catch (error) { status.textContent = error.message; }
-        finally { remove.disabled = false; }
-      });
+      const remove = button('删除权限组', 'delete', () => openDeleteConfirm({
+        title: '确认删除权限组',
+        body: `删除「${group.name}」后，组内 ${group.member_count} 位成员将自动移入会员组。`,
+        submit: () => api('/api/admin/permission-groups/' + encodeURIComponent(group.id), 'DELETE'),
+        onDone: async () => {
+          try {
+            await refreshAdminPermissions();
+            if (window.adminPermissions.includes('permission_groups')) await loadPermissionGroups();
+          } catch (error) { $('permissionGroupsStatus').textContent = error.message; }
+        },
+      }));
       remove.dataset.icon = 'delete-outline'; actions.append(remove);
     }
     form.append(label, hint, tree, status, actions); card.append(form);

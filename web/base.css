@@ -1,0 +1,264 @@
+/* Base typography, controls and surfaces. */
+:root {
+  /* Component dimensions use 80% of the previous size. */
+  font-size: 80%;
+  --md-primary: #1B6D88;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #C1E8FF;
+  --md-on-primary-container: #1B6D88;
+  --md-secondary: #4D616C;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #D0E6F2;
+  --md-tertiary: #5D5B7D;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #E3DFFF;
+  --md-surface: #F6F9FC;
+  --md-surface-low: #EEF3F7;
+  --md-surface-high: #FFFFFF;
+  --md-on-surface: #191C1E;
+  --md-on-surface-variant: #4D616C;
+  --md-outline: #B7C9D2;
+  --md-error: #ba1a1a;
+  --md-error-container: #ffdad6;
+  --md-ok: #1B6D88;
+  --md-radius-xl: 22.4px;
+  --md-radius-lg: 16px;
+  --md-radius-md: 12.8px;
+  --md-radius-sm: 9.6px;
+  --md-shadow: 0 6.4px 19.2px rgba(24, 96, 120, 0.08);
+  font-family: Roboto, "Noto Sans SC", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+}
+
+h1 { font-size: 16px; margin: 0; font-weight: 600; }
+.hint { margin: 3.2px 0 0; color: var(--md-on-surface-variant); font-size: 9.6px; line-height: 1.5; }
+h2 {
+  font-size: 9.6px;
+  letter-spacing: 0.06em;
+  color: var(--md-primary);
+  margin: 0 0 11.2px;
+  font-weight: 600;
+}
+
+label { display: block; font-size: 9.6px; color: var(--md-on-surface-variant); margin-bottom: 9.6px; }
+input:focus, textarea:focus, select:focus {
+  outline-color: var(--md-primary-container);
+  background: var(--md-surface-high);
+}
+select::-ms-expand { display: none; }
+textarea { resize: vertical; min-height: 44.8px; }
+
+.row { display: flex; gap: 8px; }
+.btn {
+  appearance: none;
+  border: 0;
+  background: var(--md-surface-low);
+  color: var(--md-primary);
+  border-radius: 799.2px;
+  padding: 8px 14.4px;
+  cursor: pointer;
+  text-decoration: none;
+  font: inherit;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4.8px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: background-color 180ms ease, color 180ms ease, opacity 180ms ease;
+}
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  transition: opacity 180ms ease;
+}
+.btn:hover:not(:disabled)::after {
+  opacity: 0.12;
+}
+.btn.primary { background: var(--md-primary); color: var(--md-on-primary); }
+.btn.danger { background: var(--md-error); color: #ffffff; }
+.btn.tonal { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.btn.ghost { background: transparent; color: var(--md-secondary); }
+.btn.small { padding: 6.4px 11.2px; font-size: 9.6px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ripple {
+  position: absolute;
+  z-index: 2;
+  border-radius: 50%;
+  transform: scale(0);
+  background: currentColor;
+  opacity: 0.28;
+  pointer-events: none;
+  animation: ripple 560ms ease-out forwards;
+}
+@keyframes ripple {
+  to { transform: scale(1); opacity: 0; }
+}
+
+.ripple-ink {
+  position: absolute;
+  z-index: 2;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: scale(0);
+  animation: ripple-ink 320ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+@keyframes ripple-ink {
+  to { transform: scale(1); opacity: 0; }
+}
+:root[data-motion="reduced"] .ripple-ink { animation-duration: 1ms; }
+.outlined-field {
+  position: relative;
+  display: block;
+  margin: 0 0 17.6px;
+}
+.outlined-field input {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: var(--md-surface-low);
+  border-radius: var(--md-radius-lg);
+  padding: 12.8px 14.4px;
+  font: inherit;
+  font-size: 12.8px;
+  color: var(--md-on-surface);
+  outline: 1.6px solid transparent;
+  transition: outline-color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms ease;
+}
+.outlined-field input::placeholder {
+  color: transparent;
+}
+.outlined-field span {
+  position: absolute;
+  left: 11.2px;
+  top: 50%;
+  padding: 0 3.2px;
+  background: transparent;
+  color: var(--md-secondary);
+  font-size: 12.8px;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transform-origin: left center;
+  transition:
+    transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.outlined-field input:focus {
+  outline-color: var(--md-primary-container);
+  background: var(--md-surface-high);
+}
+.outlined-field input:focus + span,
+.outlined-field input:not(:placeholder-shown) + span,
+.outlined-field input:-webkit-autofill + span {
+  transform: translateY(-50%) translateY(-22.4px) scale(0.75);
+  background: var(--md-surface-low);
+}
+.outlined-field input:focus + span {
+  color: var(--md-primary);
+  background: var(--md-surface-high);
+}
+.btn.danger {
+  background: var(--md-error);
+  color: #ffffff;
+}
+.btn.danger:hover:not(:disabled):not(:active)::after {
+  opacity: 0.16;
+}
+
+:root[data-motion="reduced"] .btn::after {
+    transition-duration: 0.01ms;
+  }
+
+/* Material You components at 80%; sidebar widths at 90%. */
+html,body{height:100%;overflow:hidden}
+a{text-decoration:none;color:var(--md-primary)}
+p{color:var(--md-on-surface-variant);line-height:1.6}
+h2{font-size:16px;font-weight:600;margin:0}
+label{display:block;font-size:11.2px;color:var(--md-secondary)}
+input,textarea,select{font:inherit;border:0;border-radius:var(--md-radius-lg);padding:11.2px 12.8px;background:var(--md-surface-low);color:var(--md-on-surface);max-width:100%;outline:1.6px solid transparent;transition:outline-color 150ms ease}
+form label:not(.outlined-field):not(.m3-outlined-label) input:not([type=checkbox]):not([type=radio]),form label:not(.m3-outlined-label) textarea{display:block;width:100%;margin:6.4px 0 14.4px}
+input:focus,textarea:focus,select:focus{outline-color:var(--md-primary)}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,a:focus-visible{outline:1.6px solid var(--md-primary);outline-offset:2.4px}
+dialog{background:var(--md-surface-high);color:var(--md-on-surface);border:0;border-radius:var(--md-radius-xl);box-shadow:var(--md-shadow);width:416px;max-width:calc(100% - 25.6px);padding:22.4px;max-height:90dvh}
+dialog::backdrop{background:rgba(25,28,30,.4)}
+.btn{white-space:nowrap}
+[hidden]{display:none!important}
+
+.outlined-field.password-field input { padding-right: 64px; }
+.password-visibility {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-primary);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.password-visibility:hover { background: var(--md-primary-container); }
+.password-visibility:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 1px; }
+/* Own chevron instead of the native one, which hugs the right edge and ignores the
+   rounded end. Its centre sits half the control height in from the right, i.e. on the
+   centre of the pill's end cap. Longhands are !important because several later rules
+   repaint selects with the `background` shorthand (focus, SSO), which would drop it. */
+select {
+  --select-chevron-inset: 12px; /* 40px-high control: 20px centre - 8px half icon */
+  appearance: none; -webkit-appearance: none;
+  padding-right: calc(var(--select-chevron-inset) + 16px + 8px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%234D616C' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6l4.5 4.5L12.5 6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-size: 16px 16px !important;
+  background-position: right var(--select-chevron-inset) center !important;
+}
+
+/* Every single-line field is a pill of one height. Its left padding equals the end-cap
+   radius, so the first character starts under the centre of the left cap. */
+:root { --field-h: 40px; }
+:root :is(input, select):not([type=checkbox], [type=radio], [type=range], [type=file], [type=hidden]) {
+  box-sizing: border-box;
+  height: var(--field-h);
+  min-height: var(--field-h);
+  padding: 0 calc(var(--field-h) / 2);
+  border-radius: calc(var(--field-h) / 2);
+}
+/* The chevron is centred on the right cap; text stops short of it. */
+:root select:not([multiple]) { padding-right: calc(var(--select-chevron-inset) + 16px + 8px); }
+:root .outlined-field.password-field input { padding-right: 52px; }
+/* Multi-line fields cannot be pills; they share the corner radius and text inset instead. */
+:root textarea { border-radius: calc(var(--field-h) / 2); padding-left: calc(var(--field-h) / 2); padding-right: calc(var(--field-h) / 2); }
+.outlined-field span { left: calc(var(--field-h) / 2 - 3.2px); }
+.outlined-field input:focus + span,
+.outlined-field input:not(:placeholder-shown) + span,
+.outlined-field input:-webkit-autofill + span { transform: translateY(-50%) translateY(calc(var(--field-h) / -2)) scale(0.75); }

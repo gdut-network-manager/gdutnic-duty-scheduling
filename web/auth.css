@@ -1,0 +1,183 @@
+/* Login and account binding. */
+.admin-board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(736px, 100%);
+  min-height: 336px;
+  margin: 0;
+  padding: 32px 35.2px 22.4px;
+  background: var(--md-surface-high);
+  border-radius: var(--md-radius-xl);
+  box-shadow: var(--md-shadow);
+  transition: opacity 280ms ease, transform 280ms ease;
+}
+.admin-board.is-leaving {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+.admin-board[hidden] {
+  display: none !important;
+}
+.admin-board-left {
+  padding-right: 9.6px;
+}
+.admin-logo {
+  width: 46.4px;
+  height: 46.4px;
+  padding: 4px;
+  border-radius: var(--md-radius-lg);
+  overflow: hidden;
+  background: var(--md-surface-high);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4.8px 14.4px rgba(24, 96, 120, 0.18);
+}
+.admin-logo img {
+  width: 38.4px;
+  height: 38.4px;
+  object-fit: contain;
+  display: block;
+}
+.admin-board-left h1 {
+  margin: 22.4px 0 8px;
+  font-size: 22.4px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--md-primary);
+}
+.admin-board-left p {
+  margin: 0;
+  font-size: 12.8px;
+  color: var(--md-secondary);
+}
+.admin-board-right {
+  display: flex;
+  flex-direction: column;
+  min-height: 224px;
+}
+.admin-auth-status {
+  min-height: 16px;
+  margin: 0 0 9.6px;
+  color: var(--md-error);
+  font-size: 10.4px;
+}
+.admin-board-right .btn {
+  align-self: flex-end;
+  margin-top: auto;
+  min-width: 76.8px;
+}
+
+@media (max-width: 800px) {
+  .admin-board {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 22.4px 17.6px 17.6px;
+  }
+  .admin-board-left h1 { margin-top: 12.8px; font-size: 22.4px; }
+  .admin-board-right { min-height: 0; }
+  .admin-board-right .btn { margin-top: 6.4px; }
+}
+
+:root[data-motion="reduced"] .admin-board {
+    transition-duration: 0.01ms;
+  }
+
+/* Keep SSO immediately to the left of the existing password-login action. */
+.auth-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.admin-board-right .auth-actions .btn { margin-top: 0; }
+.sso-bind-note { color: var(--md-secondary); font-size: 13px; line-height: 1.7; }
+.sso-bind-note strong { overflow-wrap: anywhere; }
+.sso-confirm { max-width: 440px; border: 0; border-radius: var(--md-radius-lg); padding: 24px; background: var(--md-surface-low); color: var(--md-on-surface); }
+.sso-confirm::backdrop { background: rgba(0,0,0,.4); }
+.sso-confirm p { overflow-wrap: anywhere; line-height: 1.7; }
+
+.admin-board-left .sso-bind-note { margin-top: 12px; }
+
+.sso-org-icon { width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; }
+
+body.auth-pending{overflow:auto;display:flex;align-items:center;justify-content:center;padding:19.2px 12.8px;min-height:100dvh}
+body:has(#authCard:not([hidden])){overflow:auto;display:flex;align-items:center;justify-content:center;padding:19.2px 12.8px;min-height:100dvh}
+#authStatus{color:var(--md-error);min-height:19.2px}
+@media(max-width:650px){.admin-board{padding:22.4px 19.2px;grid-template-columns:1fr;gap:22.4px}
+.admin-board-right{min-height:0}}
+#memberLoginStatus{color:var(--md-error);min-height:19.2px}
+
+/* Login card: keep the action next to the fields and leave room on the left. */
+.admin-board { align-items: start; min-height: 0; padding-top: 28px; padding-bottom: 26.4px; }
+.admin-board-left h1 { margin-top: 22.4px; }
+.admin-board-right { justify-content: flex-start; min-height: 0; }
+.admin-board-right .btn { align-self: flex-end; margin-top: 12px; }
+
+/* Soft portal light, using the association's blue and teal palette. */
+.auth-background {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #f6f9fc;
+  contain: strict;
+}
+/* Static gradients are painted once; only their transforms animate. */
+.auth-background::before,
+.auth-background::after {
+  content: "";
+  position: absolute;
+  width: 85%;
+  height: 85%;
+  animation: auth-light-drift 28s ease-in-out infinite alternate;
+}
+.auth-background::before {
+  top: -10%;
+  left: -10%;
+  background: radial-gradient(ellipse at center, rgba(146, 205, 213, .9) 0%, rgba(146, 205, 213, .5) 35%, rgba(146, 205, 213, 0) 70%);
+}
+.auth-background::after {
+  right: -10%;
+  bottom: -10%;
+  background: radial-gradient(ellipse at center, rgba(153, 213, 245, .85) 0%, rgba(153, 213, 245, .45) 35%, rgba(153, 213, 245, 0) 70%);
+  animation-duration: 36s;
+  animation-direction: alternate-reverse;
+}
+@keyframes auth-light-drift {
+  from { transform: translate(0, 0); }
+  to { transform: translate(15%, 12%); }
+}
+.auth-background.is-paused::before,
+.auth-background.is-paused::after {
+  animation-play-state: paused;
+}
+:root[data-motion="reduced"] .auth-background::before,
+:root[data-motion="reduced"] .auth-background::after { animation: none; }
+.auth-background[hidden] { display: none !important; }
+body.auth-pending > .admin-board,
+body > #authCard,
+body > #memberAuth {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  margin-bottom: auto;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(24, 96, 120, .03), 0 18px 64px rgba(24, 96, 120, .07);
+}
+
+[data-theme="dark"] .auth-background { background: var(--md-surface); }
+[data-theme="dark"] .auth-background::before {
+  background: radial-gradient(ellipse at center, rgba(0, 77, 99, .65), rgba(0, 77, 99, 0) 70%);
+}
+[data-theme="dark"] .auth-background::after {
+  background: radial-gradient(ellipse at center, rgba(68, 67, 100, .5), rgba(68, 67, 100, 0) 70%);
+}
+
+:root[data-motion="full"] .admin-board {
+  transition:opacity var(--motion-effects-slow-duration) var(--motion-effects-slow),
+    transform var(--motion-spatial-duration) var(--motion-spatial);
+}

@@ -179,36 +179,61 @@ def _events(start, end, cutoff):
     return events, groups
 
 
-def report(config, end=None, now=None, sample=False):
-    start, end, cutoff = period(config['weeks'], end, now)
+def _attendance_rows(start, end, cutoff):
     month_first = end.replace(day=1)
     events, groups = _events(min(start, month_first), end, cutoff)
+    first_day, first_of_month = start.isoformat(), month_first.isoformat()
     month_late = {}
     for event in events:
-        if event['kind'] == 'late' and event['day'] >= month_first.isoformat():
+        if event['kind'] == 'late' and event['day'] >= first_of_month:
             month_late[event['name']] = month_late.get(event['name'], 0) + 1
     aggregate = {kind: {} for kind in LABELS}
     for event in events:
-        if event['day'] < start.isoformat(): continue
+        if event['day'] < first_day: continue
         rows = aggregate[event['kind']]
         row = rows.setdefault(event['name'], {'name': event['name'], 'count': 0, 'dates': [],
                     'month_late': month_late.get(event['name'], 0), 'group': groups.get(event['name'], '未分组')})
         row['count'] += 1; row['dates'].append(event['at'])
+    return aggregate
+
+
+def _pinyin(value):
+    return ''.join(lazy_pinyin(value))
+
+
+def preview_data(weeks):
+    start, end, cutoff = period(weeks)
+    aggregate = _attendance_rows(start, end, cutoff)
+    sort_keys = {}
+    for rows in aggregate.values():
+        for row in rows.values():
+            for key in ('name', 'group'):
+                value = row[key]
+                if value not in sort_keys:
+                    sort_keys[value] = _pinyin(value)
+    return {'start': str(start), 'end': str(end), 'sort_keys': sort_keys,
+            'sections': {kind: list(rows.values()) for kind, rows in aggregate.items()}}
+
+
+def report(config, end=None, now=None, sample=False):
+    start, end, cutoff = period(config['weeks'], end, now)
     if sample:
         aggregate = {kind: {
             '示例成员甲': {'name': '示例成员甲', 'count': 2, 'dates': [f'{start} 09:00', f'{start + timedelta(days=2)} 14:00'], 'month_late': 3, 'group': '会员'},
             '示例成员乙': {'name': '示例成员乙', 'count': 1, 'dates': [f'{end} 09:00'], 'month_late': 1, 'group': '外勤组'},
         } for kind in LABELS}
+    else:
+        aggregate = _attendance_rows(start, end, cutoff)
     sections = {}
     for kind, data in aggregate.items():
         section = config['sections'][kind]
         rows = list(data.values())
         for row in rows: row['dates'].sort()
-        rows.sort(key=lambda row: ''.join(lazy_pinyin(row['name'])))
+        rows.sort(key=lambda row: _pinyin(row['name']))
         key = section['sort']['key']
         def sort_value(row):
             if key == 'dates': return row['dates'][0] if row['dates'] else ''
-            if key in ('name', 'group'): return ''.join(lazy_pinyin(row[key]))
+            if key in ('name', 'group'): return _pinyin(row[key])
             return row[key]
         rows.sort(key=sort_value, reverse=section['sort']['direction'] == 'desc')
         columns = [c['key'] for c in section['columns'] if c['enabled']]
@@ -272,6 +297,11 @@ def _delivery_id(end, recipient):
     return hashlib.sha256((end + ':' + recipient.lower()).encode()).hexdigest()
 
 
+def _can_attempt(delivery, retry_before):
+    return delivery is None or (
+        delivery['state'] == 'failed' and datetime.fromisoformat(delivery['updated_at']) <= retry_before)
+
+
 def run_due(now=None):
     """Claim each recipient durably, avoiding duplicate sends across server workers."""
     now = now or real_now()
@@ -282,16 +312,28 @@ def run_due(now=None):
     interval = timedelta(weeks=config['weeks'])
     due += interval * int((now - due) // interval)  # After downtime, send the latest due period.
     end = (due.date() - timedelta(days=1)).isoformat()
-    data = report(config, end=end)
-    plain, html = render_email(data)
-    for recipient in config['recipients']:
-        delivery_id = _delivery_id(end, recipient)
+    recipients = {_delivery_id(end, recipient): recipient for recipient in config['recipients']}
+    if not recipients:
+        return
+    retry_before = now - timedelta(minutes=15)
+    placeholders = ','.join('?' for _ in recipients)
+    with db.read() as conn:
+        deliveries = {row['id']: row for row in conn.execute(
+            f'SELECT id,state,updated_at FROM push_deliveries WHERE id IN ({placeholders})', tuple(recipients))}
+    pending = [(delivery_id, recipient) for delivery_id, recipient in recipients.items()
+               if _can_attempt(deliveries.get(delivery_id), retry_before)]
+    if pending:
+        data = report(config, end=end)
+        plain, html = render_email(data)
+    elif not all(row['state'] == 'sent' for row in deliveries.values()):
+        return
+    for delivery_id, recipient in pending:
         with db.write() as conn:
             current = db.get_setting(conn, KEY, {}) or {}
             if not current.get('enabled') or recipient not in current.get('recipients', []):
                 continue
             row = conn.execute('SELECT state,updated_at FROM push_deliveries WHERE id=?', (delivery_id,)).fetchone()
-            if row and (row['state'] != 'failed' or now - datetime.fromisoformat(row['updated_at']) < timedelta(minutes=15)):
+            if not _can_attempt(row, retry_before):
                 continue
             if row:
                 conn.execute("UPDATE push_deliveries SET state='sending',updated_at=?,error='' WHERE id=?", (now.isoformat(), delivery_id))
@@ -321,7 +363,9 @@ def status():
     config = load()
     with db.read() as conn:
         rows = [dict(row) for row in conn.execute('SELECT period_end,recipient,state,updated_at,error FROM push_deliveries ORDER BY updated_at DESC LIMIT 20')]
-    return {'config': config, 'deliveries': rows, 'smtp_ready': all(admin_store.smtp_config().get(key) for key in ('enabled', 'host', 'from_address'))}
+    smtp = admin_store.smtp_config()
+    return {'config': config, 'deliveries': rows, 'preview_now': real_now().isoformat(),
+            'smtp_ready': all(smtp.get(key) for key in ('enabled', 'host', 'from_address'))}
 
 
 async def worker():

@@ -8,6 +8,7 @@ it always holds every permission — checks here never consult the editable tabl
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import secrets
@@ -134,16 +135,19 @@ def verify(password):
     return bool(data) and admin_store._verify_password(str(password or ''), str(data['password']))
 
 
-def change_password(new_password):
+def change_password(new_password, *, old_password=None):
     if len(new_password) < 6 or len(new_password) > 128:
         raise ValueError('密码长度应为 6～128 位')
-    data = _load()
-    if not data:
-        raise LookupError('原始管理员尚未创建')
-    data['password'] = admin_store._hash_password(new_password)
-    data['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
-    _save(data)
-    return {'username': str(data['username'])}
+    with db.write():
+        data = _load()
+        if not data:
+            raise LookupError('原始管理员尚未创建')
+        if old_password is not None and not admin_store._verify_password(old_password, str(data['password'])):
+            raise ValueError('当前密码不正确')
+        data['password'] = admin_store._hash_password(new_password)
+        data['updated_at'] = datetime.now().astimezone().isoformat(timespec='seconds')
+        _save(data)
+    return {'username': str(data['username']), 'version': _password_version(data)}
 
 
 def purge_mirror_row(conn=None):
@@ -168,13 +172,14 @@ def purge_mirror_row(conn=None):
             context.__exit__(None, None, None)
 
 
+def _password_version(data):
+    return hashlib.sha256(str(data['password']).encode()).hexdigest()
+
+
 def session_version():
     """Stable per-password token, so changing the password ends older sessions."""
     data = _load()
-    if not data:
-        return ''
-    import hashlib
-    return hashlib.sha256(str(data['password']).encode()).hexdigest()
+    return _password_version(data) if data else ''
 
 
 def effective_permissions(name):

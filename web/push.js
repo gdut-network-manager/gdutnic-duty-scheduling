@@ -1,18 +1,18 @@
 (() => {
   const labels = {name:'名称', count:'次数', dates:'日期时间', month_late:'本月累计迟到次数', group:'分组'};
   const kinds = {late:'迟到', absent:'旷班'};
-  let draft, editing, previewTimer, revision = 0, dirty = false;
+  let draft, editing, realData, revision = 0, dirty = false, previewClockSkew = 0;
   const message = text => { $('pushStatus').textContent = text; };
-  function changed() {
+  function changed(updatePreview = true) {
     dirty = true; message('有未保存的更改');
-    clearTimeout(previewTimer); previewTimer = setTimeout(preview, 180);
+    if (updatePreview) drawPreview();
   }
   function recipients() {
     $('pushRecipients').replaceChildren();
     if (!draft.recipients.length) $('pushRecipients').append(el('span', 'hint', '尚未添加收件邮箱'));
     draft.recipients.forEach(address => {
       const chip = el('span', 'push-recipient'); chip.append(el('span', '', address));
-      const remove = button('', 'tonal icon-btn', () => { draft.recipients = draft.recipients.filter(a => a !== address); recipients(); changed(); });
+      const remove = button('', 'tonal icon-btn', () => { draft.recipients = draft.recipients.filter(a => a !== address); recipients(); changed(false); });
       remove.dataset.icon = 'close'; remove.setAttribute('aria-label', `移除 ${address}`);
       chip.append(remove); $('pushRecipients').append(chip);
     });
@@ -105,21 +105,22 @@
       pill.onlostpointercapture = e => finish(e, true);
     }
   }
-  async function preview() {
+  function drawPreview() {
     if (!draft) return;
-    const request = ++revision;
-    $('pushPreviewStatus').textContent = '正在更新预览…';
+    const sample = $('pushSample').checked;
+    const snapshot = sample ? PushLayout.sample(draft.weeks, new Date(Date.now() + previewClockSkew)) : realData;
+    if (!snapshot) return;
     try {
-      const data = await api('/api/admin/push/preview', 'POST', {config:draft, sample:$('pushSample').checked});
-      if (request !== revision) return;
+      const data = PushLayout.format(draft, snapshot);
       $('pushTitle').textContent = data.title;
       $('pushOpening').textContent = data.opening || '（开头留空 · 双击编辑）';
       $('pushClosing').textContent = data.closing || '（结尾留空 · 双击编辑）';
-      $('pushPreviewRange').textContent = `${data.start} — ${data.end}`;
-      $('pushPreviewBadge').textContent = data.sample ? '示例数据 · 仅预览，不会发送' : '真实考勤 · 最近完整周期';
+      $('pushPreviewRange').textContent = `${snapshot.start} — ${snapshot.end}`;
+      $('pushPreviewBadge').textContent = sample ? '示例数据 · 仅预览，不会发送' : '真实考勤 · 最近完整周期';
       for (const [kind, section] of Object.entries(data.sections)) {
         $(`push-${kind}-people`).textContent = section.enabled ? `${section.people} 人` : '未推送';
         const wrap = $(`push-${kind}-table`); wrap.replaceChildren();
+        if (!section.enabled) continue;
         if (!section.rows.length) { wrap.append(el('p', 'hint push-empty', `本周期无${kinds[kind]}记录`)); continue; }
         const table = el('table', 'push-table'), thead = el('thead'), head = el('tr');
         for (const key of section.columns) { const th = el('th', '', labels[key]); th.scope = 'col'; head.append(th); }
@@ -128,9 +129,24 @@
         table.append(tbody); wrap.append(table);
       }
       $('pushPreviewStatus').textContent = '';
+    } catch (error) { $('pushPreviewStatus').textContent = error.message; }
+  }
+  async function refreshPreview() {
+    if (!draft) return;
+    const request = ++revision;
+    realData = null;
+    if ($('pushSample').checked) { drawPreview(); return; }
+    $('pushPreviewStatus').textContent = '正在更新预览…';
+    try {
+      const snapshot = await api(`/api/admin/push/preview?weeks=${draft.weeks}`);
+      if (request !== revision) return;
+      realData = snapshot;
+      drawPreview();
     } catch (error) { if (request === revision) $('pushPreviewStatus').textContent = error.message; }
   }
   function drawStatus(data) {
+    const now = Date.parse(data.preview_now);
+    if (Number.isFinite(now)) previewClockSkew = now - Date.now();
     const config = data.config;
     $('pushNext').textContent = config.enabled && config.next_run
       ? `下次发送：${new Date(config.next_run).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai', hour12:false})}（北京时间）· 每 ${config.weeks} 周一次`
@@ -151,21 +167,21 @@
     try {
       const data = await api('/api/admin/push'); draft = data.config; dirty = false;
       $('pushEnabled').checked = draft.enabled; $('pushWeeks').value = draft.weeks; $('pushTime').value = draft.send_time;
-      recipients(); sections(); drawStatus(data); message(''); await preview();
+      recipients(); sections(); drawStatus(data); message(''); await refreshPreview();
     } catch (error) { message(error.message); }
   }
-  $('pushTab').onclick = () => { showPage('push'); if (!draft) load(); };
+  $('pushTab').onclick = () => { showPage('push'); if (draft) refreshPreview(); else load(); };
   $('pushRecipientForm').onsubmit = e => {
     e.preventDefault(); if (!draft) return;
     const input = $('pushAddress'), address = input.value.trim();
     if (draft.recipients.length >= 50) { message('最多添加 50 个目标邮箱'); return; }
     if (draft.recipients.some(value => value.toLowerCase() === address.toLowerCase())) { message('这个邮箱已添加'); return; }
-    draft.recipients.push(address); input.value = ''; recipients(); changed(); input.focus();
+    draft.recipients.push(address); input.value = ''; recipients(); changed(false); input.focus();
   };
-  $('pushEnabled').onchange = e => { if (draft) { draft.enabled = e.target.checked; changed(); } };
-  $('pushWeeks').onchange = e => { if (draft) { draft.weeks = Number(e.target.value); changed(); } };
-  $('pushTime').onchange = e => { if (draft) { draft.send_time = e.target.value; changed(); } };
-  $('pushSample').onchange = preview;
+  $('pushEnabled').onchange = e => { if (draft) { draft.enabled = e.target.checked; changed(false); } };
+  $('pushWeeks').onchange = e => { if (draft) { draft.weeks = Number(e.target.value); changed(false); refreshPreview(); } };
+  $('pushTime').onchange = e => { if (draft) { draft.send_time = e.target.value; changed(false); } };
+  $('pushSample').onchange = refreshPreview;
   $('pushSave').onclick = async () => {
     if (!draft) return;
     if ($('pushAddress').value.trim()) { message('输入框内还有未添加的邮箱，请先按「添加邮箱」'); $('pushAddress').focus(); return; }

@@ -6,7 +6,7 @@
   const nav = app && app.querySelector('.ga-nav');
   const main = app && app.querySelector('.ga-main');
   if (!nav || !main) return;
-  const narrow = matchMedia('(max-width: 800px)'); // keep in sync with schedule.css
+  const narrow = matchMedia('(max-width: 800px)'); // keep in sync with workspace.css
   const make = (tag, className) => Object.assign(document.createElement(tag), { className });
 
   const bar = make('div', 'mobile-bar');

@@ -249,6 +249,8 @@ def change_password(name, old_password, new_password):
         row = conn.execute('SELECT password,active FROM member_accounts WHERE username=?', (name,)).fetchone()
         if not row or not row['active'] or not admin_store._verify_password(old_password, row['password']):
             raise ValueError('当前密码不正确')
+        password_hash = admin_store._hash_password(new_password)
         conn.execute('UPDATE member_accounts SET password=? WHERE username=?',
-                     (admin_store._hash_password(new_password), name))
+                     (password_hash, name))
     MEMBER_SESSIONS.clear(name + ':')
+    return hashlib.sha256(password_hash.encode()).hexdigest()

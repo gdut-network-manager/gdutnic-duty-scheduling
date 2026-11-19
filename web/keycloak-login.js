@@ -11,7 +11,7 @@
   function refresh() { return fetch('/api/auth/keycloak/status', {cache: 'no-store'}).then(response => response.json()).then(data => {
     for (const button of buttons) {
       button.dataset.ssoEnabled = String(!!data.enabled);
-      const registering = button.dataset.keycloakLogin === "admin" && document.querySelector("#authSubmit")?.textContent === "注册";
+      const registering = button.form?.dataset.registering === 'true';
       button.hidden = !data.enabled || registering;
       button.disabled = !data.enabled;
       if (!data.enabled) button.title = 'GDUTNIC 登录暂不可用';

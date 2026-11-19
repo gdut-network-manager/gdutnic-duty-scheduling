@@ -1,32 +1,109 @@
-/* Material You components at 80%; sidebar widths at 90%. */
-html,body{height:100%;overflow:hidden}
-body.auth-pending{overflow:auto;display:flex;align-items:center;justify-content:center;padding:19.2px 12.8px;min-height:100dvh}
-body:has(#authCard:not([hidden])){overflow:auto;display:flex;align-items:center;justify-content:center;padding:19.2px 12.8px;min-height:100dvh}
-a{text-decoration:none;color:var(--md-primary)}
-.ga-main-body{padding:9.6px 0 19.2px}
-.hero{display:flex;justify-content:space-between;align-items:center;gap:19.2px}
-/* The hero stays pinned while the page scrolls, with a blurred backdrop that fades into the content. */
-.hero{position:sticky;top:-9.6px;z-index:6;margin:0 0 22.4px;padding:19.2px 0 16px;
-  /* The scroller keeps 9.6px top padding; the negative offset closes that gap so no
-     scrolled content peeks above the pinned header. */
-  background:var(--md-surface);background:color-mix(in srgb, var(--md-surface) 92%, transparent);
-  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
-.hero::after{content:"";position:absolute;left:0;right:0;top:100%;height:22.4px;pointer-events:none;
-  background:linear-gradient(to bottom, color-mix(in srgb, var(--md-surface) 92%, transparent), transparent)}
+/* Administrator workspace. */
+.md-select-menu {
+  position: fixed;
+  z-index: 1000;
+  inset: auto;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  /* Concentric corners: menu radius = inner radius + padding, and the 30px search pill's cap is the inner radius. */
+  --md-select-pad: 6.4px;
+  --md-select-inner-radius: 15px;
+  margin: 0;
+  padding: var(--md-select-pad);
+  border: 0;
+  overflow: hidden;
+  background: var(--md-surface-high);
+  color: var(--md-on-surface);
+  border-radius: calc(var(--md-select-inner-radius) + var(--md-select-pad));
+  box-shadow: 0 1.6px 4.8px rgba(0, 0, 0, 0.1), 0 8px 22.4px rgba(24, 96, 120, 0.16);
+  opacity: 0;
+  transform: scaleY(0.92);
+  transition: opacity 150ms ease, transform 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+.md-select-menu.open { opacity: 1; transform: none; }
+.md-select-menu:popover-open, .md-select-menu:not([popover]) { display: flex; flex-direction: column; }
+.md-select-list { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.md-select-menu .md-select-search { --field-h: calc(var(--md-select-inner-radius) * 2); display: flex; flex: 0 0 auto; margin: 0 0 var(--md-select-pad); }
+.md-select-menu .md-select-search[data-icon]::before { left: 7px; width: 16px; height: 16px; }
+.md-select-menu .md-select-search[data-icon] input { padding-left: 12.8px; text-indent: 17.2px; }
+.md-select-menu .md-select-search[hidden] { display: none; }
+.md-select-menu .md-select-search input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 12.8px 0 38px;
+  border: 0;
+  border-radius: 799.2px;
+  background: var(--md-surface-low);
+  color: var(--md-on-surface);
+  font: inherit;
+}
+.md-select-empty { margin: 0; padding: 9.6px 12.8px; color: var(--md-on-surface-variant); }
+.md-select-option {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 35.2px;
+  padding: 6.4px 12.8px;
+  border-radius: var(--md-select-inner-radius);
+  line-height: 1.4;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color 120ms ease;
+}
+.md-select-option + .md-select-option { margin-top: 1.6px; }
+.md-select-option[hidden] { display: none; }
+.md-select-option[aria-disabled="true"] { opacity: 0.38; pointer-events: none; }
+.md-select-option:hover,
+.md-select-option.active { background: color-mix(in srgb, var(--md-on-surface) 8%, transparent); }
+.md-select-option.selected {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  font-weight: 600;
+}
+.md-select-option.selected:hover,
+.md-select-option.selected.active { background: color-mix(in srgb, var(--md-on-secondary-container) 12%, var(--md-secondary-container)); }
+
+:root[data-motion="reduced"] .md-select-menu {
+    transition-duration: 0.01ms;
+  }
+
+/* Material You: tonal sections, outlined fields and a high-contrast switch. */
+.sso-config { max-width: 960px; }
+.sso-config fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.sso-config .card { margin-bottom: 20px; padding: 24px; border-radius: 24px; }
+.sso-enable-card { display: flex; justify-content: space-between; align-items: center; gap: 24px; background: var(--md-primary-container); }
+.sso-enable-card h2, .sso-config-card h2 { margin: 0 0 8px; font-size: 18px; }
+.sso-config .hint { line-height: 1.7; margin: 0 0 18px; overflow-wrap: anywhere; }
+.sso-enable-card .hint { margin: 0; }
+.sso-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; margin-top: 24px; align-items: start; }
+.sso-wide { grid-column: 1 / -1; }
+.sso-config .outlined-field { margin-bottom: 8px; }
+.sso-config input, .sso-config select { width: 100%; }
+.sso-config .review-check input { width: auto; }
+.sso-config select { background: var(--md-surface-low); color: var(--md-on-surface); }
+.sso-match-row { margin: 24px 0 18px; }
+.sso-toggle { display: inline-flex; position: relative; flex: 0 0 auto; cursor: pointer; }
+.sso-toggle input { position: absolute; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+.sso-toggle span { width: 52px; height: 32px; border-radius: 99px; border: 2px solid var(--md-outline, #71818a); background: var(--md-surface-low); pointer-events: none; transition: background .15s; }
+.sso-toggle span::after { content: ''; display: block; width: 20px; height: 20px; margin: 4px; border-radius: 50%; background: var(--md-secondary); transition: transform .15s; }
+.sso-toggle input:checked + span { background: var(--md-primary); border-color: var(--md-primary); }
+.sso-toggle input:checked + span::after { transform: translateX(20px); background: var(--md-on-primary, white); }
+.sso-toggle input:focus-visible + span { outline: 3px solid var(--md-primary); outline-offset: 4px; }
+.sso-actions { padding: 0; }
+.sso-actions .actions { justify-content: flex-start; flex-wrap: wrap; gap: 12px; }
+.sso-actions [role=status] { min-height: 24px; line-height: 1.6; }
+@media (max-width: 650px) { .sso-grid { grid-template-columns: minmax(0,1fr); } .sso-config .card { padding: 20px; } .sso-enable-card { gap: 12px; } }
+:root[data-motion="reduced"] .sso-toggle span,
+:root[data-motion="reduced"] .sso-toggle span::after { transition: none; }
+
 .hero-actions{display:flex;align-items:center;gap:9.6px;flex-wrap:wrap}
 .member-search input{min-width:168px}
-@supports not (background: color-mix(in srgb, red 50%, blue)){.hero{background:var(--md-surface)}
-  .hero::after{background:linear-gradient(to bottom, var(--md-surface), transparent)}}
-.hero h1{font-size:22.4px;font-weight:600;letter-spacing:-.02em;margin:6.4px 0 9.6px;color:var(--md-on-surface)}
-.member-hero{position:sticky;top:-9.6px;z-index:6;margin:0 0 19.2px;padding:19.2px 0 14.4px;
-  background:var(--md-surface);background:color-mix(in srgb, var(--md-surface) 92%, transparent);
-  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
-.member-hero::after{content:"";position:absolute;left:0;right:0;top:100%;height:19.2px;pointer-events:none;
-  background:linear-gradient(to bottom, color-mix(in srgb, var(--md-surface) 92%, transparent), transparent)}
-.member-hero h1{margin:0}
-.member-account-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.member-account-actions #changePassword{margin-left:auto}
-p{color:var(--md-on-surface-variant);line-height:1.6}
 .eyebrow{display:none}
 .date-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--md-surface-low);padding:16px;border-radius:var(--md-radius-xl)}
 .date-box label{width:100%;font-size:11.2px;color:var(--md-secondary)}
@@ -34,86 +111,74 @@ p{color:var(--md-on-surface-variant);line-height:1.6}
 .stats>div{padding:16px 19.2px;background:var(--md-secondary-container);color:var(--md-on-primary-container);border-radius:var(--md-radius-xl)}
 .stats strong{font-size:22.4px;font-weight:600;margin-right:9.6px}
 .stats span{font-size:11.2px;color:var(--md-secondary)}
-.section-head{display:flex;align-items:center;justify-content:space-between;gap:12.8px;margin-bottom:12.8px}
-h2{font-size:16px;font-weight:600;margin:0}
-.section-head>div{display:flex;gap:8px}
-.shifts{display:grid;gap:12.8px}
-.card{background:var(--md-surface-high);border:0;border-radius:var(--md-radius-xl);padding:19.2px;box-shadow:var(--md-shadow)}
-.shift-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-.time{font-size:19.2px;font-weight:600;color:var(--md-primary)}
-.location{margin-top:6.4px;font-size:11.2px;color:var(--md-on-surface-variant)}
-.badge{display:inline-flex;align-items:center;background:var(--md-secondary-container);color:var(--md-on-primary-container);border-radius:999px;padding:5.6px 12px;font-size:11.2px;line-height:1.4;white-space:nowrap}
-.members{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:16px;border-top:0.8px solid var(--md-surface-low)}
-.member{display:inline-flex;align-items:center;background:var(--md-surface-low);color:var(--md-on-surface-variant);padding:6.4px 12px;border-radius:999px;font-size:11.2px;line-height:1.4;white-space:nowrap}
-.member.checked{background:var(--md-primary-container);color:var(--md-on-primary-container)}
-/* Late/absent only recolour the chip; the label stays accurate to the check-in record. */
-.member.late,.member.checked.late{background:var(--schedule-warning-container, #fff3c4);color:var(--schedule-on-warning-container, #8a6000)}
-.member.absent,.member.checked.absent{background:var(--schedule-error-container, #ffdcdc);color:var(--schedule-on-error-container, #a41212)}
-.member.pending{background:var(--md-surface-low);color:var(--md-on-surface-variant)}
-.check-form{display:flex;align-items:center;gap:9.6px;margin-top:16px}
-.check-form select{flex:1;min-width:0}
-.empty{text-align:center;padding:51.2px 19.2px;background:var(--md-surface-low);border-radius:var(--md-radius-xl)}
-.empty h2{margin-bottom:8px}
-label{display:block;font-size:11.2px;color:var(--md-secondary)}
-input,textarea,select{font:inherit;border:0;border-radius:var(--md-radius-lg);padding:11.2px 12.8px;background:var(--md-surface-low);color:var(--md-on-surface);max-width:100%;outline:1.6px solid transparent;transition:outline-color 150ms ease}
-form label:not(.outlined-field):not(.m3-outlined-label) input:not([type=checkbox]):not([type=radio]),form label:not(.m3-outlined-label) textarea{display:block;width:100%;margin:6.4px 0 14.4px}
-input:focus,textarea:focus,select:focus{outline-color:var(--md-primary)}
-button:disabled{opacity:.5;cursor:default}
-button:focus-visible,a:focus-visible{outline:1.6px solid var(--md-primary);outline-offset:2.4px}
-dialog{background:var(--md-surface-high);color:var(--md-on-surface);border:0;border-radius:var(--md-radius-xl);box-shadow:var(--md-shadow);width:416px;max-width:calc(100% - 25.6px);padding:22.4px;max-height:90dvh}
-dialog::backdrop{background:rgba(25,28,30,.4)}
-#clearStatus{color:var(--md-error);min-height:19.2px}#clearDialog p{line-height:1.7}#clearDialog strong{color:var(--md-error)}
+#clearStatus{color:var(--md-error);min-height:19.2px}
+#clearDialog p{line-height:1.7}
+#clearDialog strong{color:var(--md-error)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12.8px}
-#status,#formStatus,#authStatus{color:var(--md-error);min-height:19.2px}
-.actions{display:flex;flex-wrap:wrap;gap:6.4px;margin-top:14.4px}.btn{white-space:nowrap}
-[hidden]{display:none!important}
-@media(max-width:900px){.ga-app{grid-template-columns:162px 1fr}.hero{align-items:stretch;flex-direction:column}.member-hero{flex-direction:row;align-items:center}.stats>div{padding:14.4px 11.2px}.stats strong{display:block}.date-box{padding:12.8px}}
-@media(max-width:650px){.ga-main{padding:12.8px}.hero{gap:9.6px;margin-bottom:16px}.hero h1{font-size:20.8px}.hero p{margin:3.2px 0}.stats{gap:6.4px;margin-bottom:19.2px}.stats>div{padding:12.8px 9.6px}.stats strong{font-size:19.2px}.stats span{font-size:9.6px}.card{padding:16px}.shift-top{flex-wrap:wrap}.check-form{flex-direction:column}.time{font-size:16.8px}.admin-board{padding:22.4px 19.2px;grid-template-columns:1fr;gap:22.4px}.admin-board-right{min-height:0}}
-.weekly-config{margin-bottom:16px}.weekly-times{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:19.2px;margin-top:12.8px}.weekly-slot{border:0.8px solid var(--md-outline);border-radius:var(--md-radius-lg);padding:11.2px;min-width:0}.weekly-slot legend{color:var(--md-primary);padding:0 4.8px;font-size:11.2px}.weekly-slot input{width:100%;min-width:0}.weekly-table-wrap{overflow:auto;background:var(--md-surface-high);border-radius:var(--md-radius-xl);box-shadow:var(--md-shadow)}.weekly-table-tools{display:flex;align-items:center;justify-content:space-between;gap:12.8px;padding:12.8px 16px;border-bottom:0.8px solid var(--md-surface-low);color:var(--md-on-surface-variant);font-size:11.2px;line-height:1.6}.weekly-table-tools .actions{margin-top:0;flex-wrap:wrap}@media(max-width:650px){.weekly-table-tools{flex-direction:column;align-items:flex-start}}
-.weekly-table{width:100%;min-width:800px;border-collapse:separate;border-spacing:0;text-align:left}.weekly-table caption{text-align:left;padding:16px;color:var(--md-secondary);font-size:11.2px}.weekly-table th{padding:12.8px;background:var(--md-secondary-container);color:var(--md-on-primary-container);font-weight:600;white-space:nowrap}.weekly-table td{padding:6.4px;border-bottom:0.8px solid var(--md-surface-low)}.weekly-table textarea{width:100%;min-width:88px;resize:vertical;padding:9.6px;font-size:11.2px;line-height:1.7}.review-check{display:flex;align-items:center;gap:8px;margin-top:16px}.review-check input{flex:0 0 16px;width:16px;height:16px;margin:0;padding:0;accent-color:var(--md-primary)}.publish-card{margin-top:22.4px}.publish-range{display:flex;align-items:flex-end;gap:12.8px;flex-wrap:wrap;margin:12.8px 0}.publish-range label{flex:1;min-width:180px}.publish-arrow{font-size:16px;color:var(--md-secondary);padding-bottom:12px}.publish-form{display:flex;align-items:center;gap:12.8px;flex-wrap:wrap}.publish-form label{flex:1;min-width:160px}#weeklyStatus{min-height:19.2px;color:var(--md-primary);line-height:1.7}@media(max-width:1100px){.weekly-times{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){.weekly-times{gap:8px}.weekly-slot{padding:8px}}
+#formStatus{color:var(--md-error);min-height:19.2px}
+@media(max-width:900px){.stats>div{padding:14.4px 11.2px}
+.stats strong{display:block}
+.date-box{padding:12.8px}}
+@media(max-width:650px){.stats{gap:6.4px;margin-bottom:19.2px}
+.stats>div{padding:12.8px 9.6px}
+.stats strong{font-size:19.2px}
+.stats span{font-size:9.6px}}
+.weekly-config{margin-bottom:16px}
+.weekly-times{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:19.2px;margin-top:12.8px}
+.weekly-slot{border:0.8px solid var(--md-outline);border-radius:var(--md-radius-lg);padding:11.2px;min-width:0}
+.weekly-slot legend{color:var(--md-primary);padding:0 4.8px;font-size:11.2px}
+.weekly-slot input{width:100%;min-width:0}
+.weekly-table-wrap{overflow:auto;background:var(--md-surface-high);border-radius:var(--md-radius-xl);box-shadow:var(--md-shadow)}
+.weekly-table-tools{display:flex;align-items:center;justify-content:space-between;gap:12.8px;padding:12.8px 16px;border-bottom:0.8px solid var(--md-surface-low);color:var(--md-on-surface-variant);font-size:11.2px;line-height:1.6}
+.weekly-table-tools .actions{margin-top:0;flex-wrap:wrap}
+@media(max-width:650px){.weekly-table-tools{flex-direction:column;align-items:flex-start}}
+.weekly-table{width:100%;min-width:800px;border-collapse:separate;border-spacing:0;text-align:left}
+.weekly-table caption{text-align:left;padding:16px;color:var(--md-secondary);font-size:11.2px}
+.weekly-table th{padding:12.8px;background:var(--md-secondary-container);color:var(--md-on-primary-container);font-weight:600;white-space:nowrap}
+.weekly-table td{padding:6.4px;border-bottom:0.8px solid var(--md-surface-low)}
+.weekly-table textarea{width:100%;min-width:88px;resize:vertical;padding:9.6px;font-size:11.2px;line-height:1.7}
+.review-check{display:flex;align-items:center;gap:8px;margin-top:16px}
+.review-check input{flex:0 0 16px;width:16px;height:16px;margin:0;padding:0;accent-color:var(--md-primary)}
+.publish-card{margin-top:22.4px}
+.publish-range{display:flex;align-items:flex-end;gap:12.8px;flex-wrap:wrap;margin:12.8px 0}
+.publish-range label{flex:1;min-width:180px}
+.publish-arrow{font-size:16px;color:var(--md-secondary);padding-bottom:12px}
+.publish-form{display:flex;align-items:center;gap:12.8px;flex-wrap:wrap}
+.publish-form label{flex:1;min-width:160px}
+#weeklyStatus{min-height:19.2px;color:var(--md-primary);line-height:1.7}
+@media(max-width:1100px){.weekly-times{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.weekly-times{gap:8px}
+.weekly-slot{padding:8px}}
 
-.rules-card{max-width:640px}.rules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12.8px;margin:12.8px 0}#rulesStatus,#specialStatus,#memberFormStatus{color:var(--md-primary);min-height:19.2px;line-height:1.7}@media(max-width:650px){.rules-grid{grid-template-columns:1fr}}
-.ga-main,.ga-main-body{min-width:0}
-.member-account{display:flex;align-items:center;justify-content:space-between;gap:12.8px}.member-account p{margin:6.4px 0 0}.member-account .actions{margin-top:0}#passwordStatus,#memberLoginStatus{color:var(--md-error);min-height:19.2px}#membersStatus{color:var(--md-primary);line-height:1.7}@media(max-width:650px){.member-account{flex-direction:column;align-items:flex-start}.member-account .actions{flex-wrap:wrap}}
+.rules-card{max-width:640px}
+.rules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12.8px;margin:12.8px 0}
+#rulesStatus,#specialStatus,#memberFormStatus{color:var(--md-primary);min-height:19.2px;line-height:1.7}
+@media(max-width:650px){.rules-grid{grid-template-columns:1fr}}
+.member-account{display:flex;align-items:center;justify-content:space-between;gap:12.8px}
+.member-account p{margin:6.4px 0 0}
+.member-account .actions{margin-top:0}
+#membersStatus{color:var(--md-primary);line-height:1.7}
+@media(max-width:650px){.member-account{flex-direction:column;align-items:flex-start}
+.member-account .actions{flex-wrap:wrap}}
 
 /* Overview: weekly board tones and per-member detail rows. */
 .overview-stats>div:first-child{background:var(--md-primary-container);color:var(--md-on-primary-container)}
-.range-head{margin-top:22.4px}
-/* Week/month stepping: a compact pair of arrows around the visible range. */
-.range-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.range-label{min-width:15em;text-align:center;font-variant-numeric:tabular-nums}
 .range-today{display:inline-flex;gap:8px}
 @media(max-width:650px){
-  .range-head{flex-wrap:wrap;gap:8px}
-  .range-nav{width:100%;justify-content:space-between}
-  .range-label{min-width:0;flex:1;text-align:center}
   /* 回到本月/本周 gets its own row so the arrows and range stay centred. */
   .range-today{flex:0 0 100%;display:flex;justify-content:center}
 }
-.btn.icon-btn:disabled{opacity:1;color:var(--md-outline);background:var(--md-surface-low)}
-.btn.icon-btn:disabled::after{opacity:0}
-.week-board{display:flex;flex-direction:column;gap:8px;overflow-x:auto;padding-bottom:4.8px}
-.week-row{display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr));gap:12px;align-items:stretch}
-.week-head-row{align-items:end}
-.week-slot-label{font-size:11.2px;color:var(--md-secondary);font-weight:600;padding-top:12.8px;white-space:nowrap}
-.week-cell{display:flex;flex-direction:column;justify-content:stretch;min-width:0;padding:6.4px;border-radius:var(--md-radius-lg);background:var(--md-surface-low)}
-.week-cell.today{outline:1.6px solid var(--md-primary)}
-.week-cell-empty{min-height:1px}
-.week-day-head{font-size:11.2px;color:var(--md-secondary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.week-card{flex:1;display:flex;flex-direction:column;gap:2.4px;width:100%;text-align:left;border:0;border-radius:var(--md-radius-sm);padding:9.6px;font:inherit;font-size:11.2px;line-height:1.5;cursor:pointer;color:var(--md-on-surface)}
 .week-card.future{background:var(--schedule-primary-container, #dbeefd);color:var(--schedule-on-primary-container, #17495e)}
 .week-card.current{background:var(--schedule-surface-high, #ffffff);outline:1.6px solid var(--schedule-primary, #1B6D88)}
 .week-card.warn{background:var(--schedule-warning-container, #fff3c4)}
 .week-card.danger{background:var(--schedule-error-container, #ffdcdc)}
 .week-card.ok{background:var(--schedule-success-container, #ddf3dc)}
-.week-card-time{font-size:12px;font-weight:600}
 .week-card-count{color:var(--md-on-surface-variant);font-size:11.2px}
 .week-card-name{display:block;flex:0 0 1.7em;height:1.7em;line-height:1.7em;font-size:11.2px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .week-card-name.blank{visibility:hidden}
 .week-card-more{font-size:11.2px;color:var(--md-on-surface-variant)}
 .week-card-name.late{color:var(--schedule-on-warning-container, #8a6000)}
 .week-card-name.absent{color:var(--schedule-on-error-container, #a41212)}
-.week-card p{margin:0}
 .detail-members{display:flex;flex-direction:column;gap:6.4px;margin-top:9.6px}
 .detail-member{display:grid;grid-template-columns:1fr auto auto;gap:12.8px;align-items:center;padding:9.6px 12.8px;border-radius:var(--md-radius-sm);background:var(--md-surface-low)}
 .detail-member.normal{background:var(--schedule-success-container, #ddf3dc)}
@@ -125,22 +190,6 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 .detail-member.late .detail-status{color:var(--schedule-on-warning-container, #8a6000)}
 .detail-member.absent .detail-status{color:var(--schedule-on-error-container, #a41212)}
 .detail-time{font-size:11.2px;color:var(--md-on-surface-variant);white-space:nowrap}
-@media(max-width:650px){.week-row{grid-template-columns:32px repeat(7,minmax(104px,1fr))}}
-
-.shift-timeline{width:100%;min-width:0;margin:0 0 12.8px;background:transparent;overflow:hidden;contain:layout paint}
-.shift-timeline svg{display:block;width:100%;overflow:hidden;font-family:inherit;font-size:12px;font-weight:300}
-.shift-timeline text{font-weight:300}
-#status:empty{display:none}
-
-/* Field duty (外勤): member registration and the admin month board. */
-.field-card{margin-top:19.2px;max-width:640px;display:flex;flex-direction:column;gap:12.8px}
-.field-card h2{margin-bottom:0}
-#fieldButton{align-self:flex-start}
-/* Height tracks the check-in button: a hidden strut at its font size sets the line, while the label keeps its own size. */
-#fieldButton{padding-block:10.4px}
-#fieldButton::before{content:"签";font-size:13.6px;width:0;margin-right:-4px;overflow:hidden;visibility:hidden}
-#fieldButton .text{line-height:.85}
-#fieldStatus{color:var(--md-on-surface-variant);min-height:19.2px;line-height:1.7}
 .field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
 .field-person{padding:12.8px 16px;border-radius:var(--md-radius-lg);display:flex;flex-direction:column;gap:3.2px;min-width:0}
 .field-person.done{background:var(--schedule-primary-container, #cfe7fb);color:var(--schedule-on-primary-container, #14455c)}
@@ -171,114 +220,6 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 .permission-toggle:hover{background:var(--md-secondary-container)}
 .permission-option input{accent-color:var(--md-primary)}
 #permissionList{max-height:52vh;overflow:auto;padding-right:4.8px}
-
-/* Field-duty button: from Uiverse.io by ryota1231, with a three-stage label and a
-   locked green "registered" state. */
-.animated-button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 16px 36px;
-  border: 4px solid;
-  border-color: transparent;
-  font-family: inherit;
-  font-size: 16px;
-  background-color: var(--md-surface-high);
-  border-radius: 100px;
-  font-weight: 600;
-  color: var(--schedule-primary, #1f387e);
-  box-shadow: 0 0 0 2px var(--schedule-surface-high, #ffffff);
-  cursor: pointer;
-  overflow: hidden;
-  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-}
-.animated-button svg {
-  position: absolute;
-  width: 24px;
-  fill: var(--schedule-primary, #1f387e);
-  z-index: 9;
-  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-}
-.animated-button .arr-1 { right: 16px; }
-.animated-button .arr-2 { left: -25%; }
-.animated-button .circle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
-  background-color: var(--schedule-primary-container, #c5e5e4);
-  border-radius: 50%;
-  opacity: 0;
-  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-}
-.animated-button .text {
-  position: relative;
-  z-index: 1;
-  transform: translateX(-12px);
-  transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-}
-.animated-button:hover {
-  box-shadow: 0 0 0 12px transparent;
-  color: var(--schedule-on-primary-container, #212121);
-  border-radius: 12px;
-}
-.animated-button:hover .arr-1 { right: -25%; }
-.animated-button:hover .arr-2 { left: 16px; }
-.animated-button:hover .text { transform: translateX(12px); }
-.animated-button:hover svg { fill: var(--schedule-primary, #1f387e); }
-.animated-button:active {
-  scale: 0.95;
-  box-shadow: 0 0 0 4px var(--schedule-warning-outline, #f5c518);
-}
-/* State 0 (点击登记): hovering previews the pending yellow. */
-.animated-button:hover .circle { width: 220px; height: 220px; opacity: 1; background-color: var(--schedule-warning-container, #ffe9a8); }
-.animated-button:hover { color: var(--schedule-on-warning-container, #7a5b00); }
-/* Locked success state:浅绿配色，文字居中，不再响应悬停动画。 */
-.animated-button.registered,
-.animated-button.registered:hover,
-.animated-button.registered:active {
-  background-color: var(--schedule-success-container, #c8efc8);
-  color: var(--schedule-on-success-container, #1f5b25);
-  border-radius: 12px;
-  box-shadow: 0 0 0 4px var(--schedule-success-outline, #a7dfa7);
-  cursor: default;
-  scale: 1;
-}
-/* State 2 (登记完成): frozen in the pressed look; hover keeps the light green surface. */
-.animated-button.registered:hover .circle,
-.animated-button.registered .circle { width: 20px; height: 20px; opacity: 0; background-color: var(--schedule-success-container, #c8efc8); }
-.animated-button.registered:hover { background-color: var(--schedule-success-container, #c8efc8); color: var(--schedule-on-success-container, #1f5b25); border-radius: 12px; }
-.animated-button.registered:hover svg,
-.animated-button.registered svg { display: none; }
-.animated-button.registered:hover .text,
-.animated-button.registered .text { transform: none; }
-.animated-button.registered:disabled { opacity: 1; }
-
-/* Check-in variant: fits inside a shift card, and looks inert while the window is closed. */
-.animated-button.check-in-button{padding:10.4px 28.8px;font-size:13.6px;background:var(--md-surface-high)}
-.animated-button.check-in-button .text{transform:translateX(-8px)}
-.animated-button.check-in-button:hover .text{transform:translateX(8px)}
-.animated-button.check-in-button:enabled:hover{background:var(--schedule-success-container, #c8efc8);color:var(--schedule-on-success-container, #1f5b25)}
-.animated-button.check-in-button:enabled:hover .circle{background-color:var(--schedule-success-container, #c8efc8)}
-.animated-button.check-in-button:enabled:hover svg{fill:currentColor}
-.animated-button.check-in-button:disabled,
-.animated-button.check-in-button.is-locked{
-  background:var(--md-surface-low);color:var(--md-secondary);box-shadow:none;
-  border-radius:12px;cursor:not-allowed;scale:1;opacity:.75}
-.animated-button.check-in-button:disabled svg,
-.animated-button.check-in-button.is-locked svg{display:none}
-.animated-button.check-in-button:disabled .circle,
-.animated-button.check-in-button.is-locked .circle{opacity:0;width:20px;height:20px}
-.animated-button.check-in-button:disabled .text,
-.animated-button.check-in-button.is-locked .text{transform:none}
-.animated-button.check-in-button.registered{background:var(--schedule-success-container, #c8efc8);color:var(--schedule-on-success-container, #1f5b25);box-shadow:0 0 0 4px var(--schedule-success-outline, #a7dfa7);
-  opacity:1;cursor:default}
-/* The compact variant's hover shift must not win over the frozen registered look. */
-.animated-button.check-in-button.registered:hover .text{transform:none}
-.animated-button.check-in-button.registered:hover .circle{opacity:0;width:20px;height:20px}
 
 /* Inline editor opened from an overview member row or a field-duty card. */
 .detail-member.clickable,.field-person.clickable{cursor:pointer}
@@ -319,28 +260,11 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 .field-stats>div{flex:0 0 auto;min-width:240px}
 .field-stats>div{padding:16px 19.2px}
 @media(max-width:1100px){.field-stats{max-width:none}}
-/* The week board needs room for three names per card; keep it readable on desktop. */
-.week-day-head{min-width:0}
 /* Boards with two or three tiles keep each tile at a readable width. */
 .stats{grid-template-columns:repeat(auto-fit,minmax(220px,320px))}
 .stats{justify-content:start}
 .field-stats{display:flex}
 .field-stats>div{flex:0 0 auto;min-width:240px}
-
-/* Login card: keep the action next to the fields and leave room on the left. */
-.admin-board { align-items: start; min-height: 0; padding-top: 28px; padding-bottom: 26.4px; }
-.admin-board-left h1 { margin-top: 22.4px; }
-.admin-board-right { justify-content: flex-start; min-height: 0; }
-.admin-board-right .btn { align-self: flex-end; margin-top: 12px; }
-/* Empty column boards should not stretch the whole row height. */
-.week-row { align-items: stretch; }
-/* Cards in the week board size to their content but stay equal within a row. */
-.week-cell { justify-content: flex-start; }
-
-/* Empty week cells stay blank so the board reads as a calendar, not a grid of bars. */
-.week-cell:not(:has(.week-card)) { background: transparent; padding: 0; }
-.week-cell:has(.week-card) { display: flex; }
-.week-card { align-self: stretch; }
 
 /* Duty swap cards and the two-sided picker dialog. */
 .swap-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12.8px}
@@ -357,39 +281,6 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 #swapDialog .section-head{margin-top:0}
 #swapFormStatus{color:var(--md-error);min-height:19.2px}
 @media(max-width:900px){.swap-pair,.swap-picker{grid-template-columns:1fr}}
-
-/* Field duty button: pending state is yellow; confirmed stays green and locked. */
-.animated-button.pending,
-.animated-button.pending:hover,
-.animated-button.pending:active {
-  background-color: var(--schedule-warning-container, #ffe9a8);
-  color: var(--schedule-on-warning-container, #7a5b00);
-  border-radius: 12px;
-  box-shadow: 0 0 0 4px var(--schedule-warning-outline, #f0d68a);
-  cursor: default;
-  scale: 1;
-}
-/* State 1 (等待确认): frozen in the pressed look; hover changes nothing. */
-.animated-button.pending .circle,
-.animated-button.pending:hover .circle { width: 20px; height: 20px; opacity: 0; background-color: var(--schedule-warning, #f5c518); }
-.animated-button.pending svg,
-.animated-button.pending:hover svg { display: none; }
-.animated-button.pending .text,
-.animated-button.pending:hover .text { transform: none; }
-.animated-button.pending:disabled { opacity: 1; }
-
-/* 外勤确认 page */
-.badge.confirmed{background:var(--schedule-success-container, #c8efc8);color:var(--schedule-on-success-container, #1f5b25)}
-.btn.confirmed,.btn.confirmed:disabled{background:var(--schedule-success-container, #c8efc8);color:var(--schedule-on-success-container, #1f5b25);opacity:1}
-
-#fieldConfirmStatus{min-height:19.2px;color:var(--md-primary);line-height:1.7}
-
-/* 外勤确认 card: confirm button on the left, delete pushed to the right. */
-.field-pending-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12.8px}
-.field-pending-actions .animated-button{padding:10.4px 28.8px;font-size:13.6px}
-.field-pending-actions .animated-button .text{transform:translateX(-8px)}
-.field-pending-actions .animated-button:hover .text{transform:translateX(8px)}
-.field-pending-actions .btn.danger{margin-left:auto}
 
 /* 系统时间 card */
 .clock-manual{display:flex;gap:12.8px;margin:9.6px 0 0}
@@ -543,10 +434,13 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 .permission-group[open]>.permission-group-summary::after,.permission-branch[open]>summary::after{transform:rotate(225deg)}
 .permission-group-summary:hover{background:var(--md-surface-low)}
 .permission-group-summary:focus-visible,.permission-branch>summary:focus-visible{outline:2px solid var(--md-primary);outline-offset:-3px;border-radius:var(--md-radius-lg)}
-.permission-group-heading{min-width:0;flex:1}.permission-group-title{display:flex;align-items:center;gap:9.6px;flex-wrap:wrap}
-.permission-group-title h2{overflow-wrap:anywhere}.permission-group-heading p{margin:6.4px 0 0}
+.permission-group-heading{min-width:0;flex:1}
+.permission-group-title{display:flex;align-items:center;gap:9.6px;flex-wrap:wrap}
+.permission-group-title h2{overflow-wrap:anywhere}
+.permission-group-heading p{margin:6.4px 0 0}
 .permission-group-form{padding:0 19.2px 19.2px;border-top:1px solid var(--md-surface-low)}
-.permission-group-form>label{margin-top:16px;max-width:400px}.permission-group-form input[readonly]{color:var(--md-secondary)}
+.permission-group-form>label{margin-top:16px;max-width:400px}
+.permission-group-form input[readonly]{color:var(--md-secondary)}
 .permission-tree{display:block;max-width:640px;padding:6.4px;background:var(--md-surface-low);border-radius:var(--md-radius-lg)}
 .permission-tree .permission-branch{background:transparent;border-radius:var(--md-radius-sm);overflow:hidden}
 .permission-tree .permission-option{display:flex;align-items:center;gap:8px;min-height:32px;margin:0;padding:6.4px 8px;cursor:pointer;list-style:none;border:0;border-radius:var(--md-radius-sm);background:transparent}
@@ -561,8 +455,11 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 .permission-tree .permission-leaf{border-radius:var(--md-radius-sm)}
 .permission-tree .permission-option:hover{background:var(--md-secondary-container)}
 .permission-group-status{margin:9.6px 0;min-height:1.5em;color:var(--md-primary)}
-#permissionGroupSelect{display:block;width:100%;margin-top:6.4px}#permissionGroupPreview{overflow-wrap:anywhere}
-@media(max-width:650px){.permission-group-summary{padding:16px}.permission-group-form{padding:0 16px 16px}.permission-group-form .actions{flex-wrap:wrap}}
+#permissionGroupSelect{display:block;width:100%;margin-top:6.4px}
+#permissionGroupPreview{overflow-wrap:anywhere}
+@media(max-width:650px){.permission-group-summary{padding:16px}
+.permission-group-form{padding:0 16px 16px}
+.permission-group-form .actions{flex-wrap:wrap}}
 :root[data-motion="reduced"] .permission-group-summary::after,
 :root[data-motion="reduced"] .permission-branch>summary::after,
 :root[data-motion="reduced"] .permission-tree .permission-branch>summary::before {transition:none}
@@ -666,70 +563,6 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
   pointer-events: none;
 }
 
-/* Put the content inset inside the scroller, keeping its track at the outer edge. */
-.ga-main { padding-right: 0; }
-.ga-main-body { padding-right: 22.4px; }
-/* The scroller clips at its padding box; this left gutter keeps card shadows from being cut off. */
-.ga-main-body { margin-left: -4px; padding-left: 4px; }
-/* The pinned header spans that gutter too, so card shadows scrolling under it stay covered. */
-.hero, .member-hero { margin-left: -4px; margin-right: -4px; padding-left: 4px; padding-right: 4px; }
-@media (max-width: 650px) {
-  .ga-main-body { padding-right: 12.8px; }
-}
-
-/* 1u is the rendered height of a regular duty row. */
-.week-board { --week-unit: 140px; }
-.week-row:not(.week-head-row):not(.week-special-row) { min-height: 140px; }
-.week-special-row { margin-top: max(0px, calc(var(--week-unit) - 8px)); }
-.week-special-row .week-cell { gap: 12.8px; background: transparent; padding: 0; }
-.week-special-row .week-card { flex: 0 0 auto; min-height: calc(var(--week-unit) - 12.8px); }
-
-/* The closed-window label is longer than the shared animated button's fixed width. */
-.animated-button.check-in-button {
-  width: max-content;
-  min-width: 163.2px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.animated-button.check-in-button .text { width: auto; white-space: normal; overflow-wrap: anywhere; flex-shrink: 1; }
-.animated-button.check-in-button { max-width: 100%; min-width: min(163.2px, 100%); }
-
-.member-week-board .member-schedule-card,
-.member-week-board .member-schedule-card:hover {
-  background: var(--schedule-primary-container, #dbeefd);
-  color: var(--schedule-on-primary-container, #17495e);
-  cursor: default;
-  outline: none;
-}
-.member-schedule-name { display: block; font-size: 11.2px; line-height: 1.7; overflow-wrap: anywhere; }
-
-.outlined-field.password-field input { padding-right: 64px; }
-.password-visibility {
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--md-primary);
-  font: inherit;
-  font-size: 12px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.password-visibility:hover { background: var(--md-primary-container); }
-.password-visibility:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 1px; }
-
 /* The search label must not inherit form-field bottom spacing. */
 .members-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 9.6px; margin-bottom: 19.2px; }
 .members-toolbar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9.6px; }
@@ -775,17 +608,7 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 .checkin-access-grid legend { color: var(--md-primary); padding: 0 8px; font-size: 16px; font-weight: 600; }
 .checkin-access-grid select { width: 100%; margin: 6px 0 18px; }
 .checkin-access-grid textarea { display: block; width: 100%; margin-top: 6px; resize: vertical; font-family: ui-monospace, monospace; }
-.animated-button:is(.network-blocked, .permission-blocked):disabled { width: max-content; justify-content: center; background: var(--schedule-disabled-container, #e1e6e9); color: var(--schedule-disabled-ink, #737d83); box-shadow: none; opacity: 1; cursor: not-allowed; scale: 1; }
-.animated-button:is(.network-blocked, .permission-blocked) .circle { display: none; }
-.animated-button:is(.network-blocked, .permission-blocked):disabled svg { display: none; }
-.animated-button:is(.network-blocked, .permission-blocked):disabled .text { width: auto; flex-shrink: 0; transform: none; text-align: center; white-space: nowrap; transition: none; }
 @media (max-width: 650px) { .checkin-access-grid { grid-template-columns: 1fr; } }
-
-#dutyPage .member-field-card { max-width: none; margin: 0 0 24px; }
-.member-field-card .section-head { margin-bottom: 0; }
-.member-field-card .badge { gap: 4px; }
-.member-field-card > p { margin: 0; }
-.member-field-card #fieldStatus:empty { display: none; }
 
 .settings-section-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 28px 0 16px; }
 .settings-section-head p { margin-bottom: 0; }
@@ -897,19 +720,6 @@ dialog::backdrop{background:rgba(25,28,30,.4)}
 
 #weekToday:disabled { opacity: 1; color: var(--md-outline); background: var(--md-surface-low); }
 .page-actions { display: flex; justify-content: flex-end; align-items: center; gap: 9.6px; margin-bottom: 12.8px; }
-/* Own chevron instead of the native one, which hugs the right edge and ignores the
-   rounded end. Its centre sits half the control height in from the right, i.e. on the
-   centre of the pill's end cap. Longhands are !important because several later rules
-   repaint selects with the `background` shorthand (focus, SSO), which would drop it. */
-select {
-  --select-chevron-inset: 12px; /* 40px-high control: 20px centre - 8px half icon */
-  appearance: none; -webkit-appearance: none;
-  padding-right: calc(var(--select-chevron-inset) + 16px + 8px);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%234D616C' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6l4.5 4.5L12.5 6'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-  background-size: 16px 16px !important;
-  background-position: right var(--select-chevron-inset) center !important;
-}
 .sso-grid .outlined-select select { padding-right: calc(var(--select-chevron-inset) + 16px + 8px); }
 
 /* Centre pill numbers on the end cap's centre (half the 64px pill height); wider values grow rightwards. */
@@ -946,66 +756,6 @@ select {
   :is(#dailyPage .stats.overview-stats, #fieldPage .stats.overview-stats, .special-summary-row > .stats) > .stat-with-icon { height: 40px; padding: 0 16px 0 12px; gap: 6px; }
   :is(#dailyPage .stats.overview-stats, #fieldPage .stats.overview-stats, .special-summary-row > .stats) > .stat-with-icon::before { flex-basis: 18px; width: 18px; height: 18px; }
 }
-
-/* Mobile shell: a top bar with the page title, and the sidebar as a left drawer.
-   The bar and scrim are created by nav-drawer.js; 800px matches its media query. */
-.mobile-bar, .nav-scrim { display: none; }
-@media (max-width: 800px) {
-  .ga-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
-  .ga-main { padding: 0 0 12.8px 12.8px; }
-  .ga-main-body { padding-right: 12.8px; }
-  .mobile-bar { display: flex; align-items: center; gap: 6.4px; flex: 0 0 auto; height: 52px; margin: 0 12.8px 0 -6.4px; }
-  .mobile-bar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 600; color: var(--md-on-surface); }
-  .nav-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 40px; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--md-on-surface); cursor: pointer; }
-  .nav-toggle::before { width: 22px; height: 22px; flex-basis: 22px; }
-  .nav-toggle:hover { background: var(--md-surface-low); }
-  .nav-toggle:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
-
-  .ga-nav {
-    position: fixed; inset: 0 auto 0 0; z-index: 90; box-sizing: border-box;
-    width: min(288px, 84vw); padding: 12.8px;
-    border-radius: 0 22.4px 22.4px 0;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, .28);
-    transform: translateX(-102%); visibility: hidden;
-    transition: transform 240ms cubic-bezier(.2, 0, 0, 1), visibility 0s linear 240ms;
-  }
-  .ga-app.nav-open .ga-nav { transform: none; visibility: visible; transition-delay: 0s; }
-  .nav-scrim { display: block; position: fixed; inset: 0; z-index: 89; background: rgba(0, 0, 0, .42); opacity: 0; pointer-events: none; transition: opacity 240ms ease; }
-  .ga-app.nav-open .nav-scrim { opacity: 1; pointer-events: auto; }
-
-  .ga-brand { margin: 3.2px 3.2px 12.8px 6.4px; }
-  .ga-nav nav { min-height: 0; overflow-y: auto; overscroll-behavior: contain; gap: 2px; flex-wrap: nowrap; margin: -4px; padding: 4px; }
-  .ga-nav-item { flex: 0 0 auto; min-height: 44px; padding: 0 16px; font-size: 14px; }
-  .ga-nav .panel-footer { flex: 0 0 auto; padding: 9.6px 0 0; }
-  /* The bar already pins the page title, so the page header scrolls away with the content. */
-  .hero { position: relative; top: auto; padding-top: 9.6px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .hero::after { display: none; }
-}
-@media (max-width: 800px) {
-:root[data-motion="reduced"] .ga-nav,
-:root[data-motion="reduced"] .nav-scrim { transition: none; }
-
-}
-
-/* Every single-line field is a pill of one height. Its left padding equals the end-cap
-   radius, so the first character starts under the centre of the left cap. */
-:root { --field-h: 40px; }
-:root :is(input, select):not([type=checkbox], [type=radio], [type=range], [type=file], [type=hidden]) {
-  box-sizing: border-box;
-  height: var(--field-h);
-  min-height: var(--field-h);
-  padding: 0 calc(var(--field-h) / 2);
-  border-radius: calc(var(--field-h) / 2);
-}
-/* The chevron is centred on the right cap; text stops short of it. */
-:root select:not([multiple]) { padding-right: calc(var(--select-chevron-inset) + 16px + 8px); }
-:root .outlined-field.password-field input { padding-right: 52px; }
-/* Multi-line fields cannot be pills; they share the corner radius and text inset instead. */
-:root textarea { border-radius: calc(var(--field-h) / 2); padding-left: calc(var(--field-h) / 2); padding-right: calc(var(--field-h) / 2); }
-.outlined-field span { left: calc(var(--field-h) / 2 - 3.2px); }
-.outlined-field input:focus + span,
-.outlined-field input:not(:placeholder-shown) + span,
-.outlined-field input:-webkit-autofill + span { transform: translateY(-50%) translateY(calc(var(--field-h) / -2)) scale(0.75); }
 
 /* Concentric corners: card radius = its padding + the radius of the pills in its corners,
    so the badge (top right) and the action buttons (bottom left) share one height. */
@@ -1103,10 +853,6 @@ select {
 #settingsPage #ssoFields > :not(.sso-actions),
 #settingsPage #ssoFields .sso-actions > :not(.actions) { margin-left: 6px; margin-right: 6px; }
 #settingsPage .clock-manual { flex-wrap: wrap; }
-
-/* Member page: the two card titles sit 3px higher; nothing else in the cards moves. */
-.member-field-card .section-head h2,
-body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
 
 /* Account list (用户管理): Material 3 segmented list. Rows are separate filled containers 2px
    apart; the group's outer corners are large and the corners between rows small. No
@@ -1238,26 +984,9 @@ body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
 
 #memberList .card.member-account .member-student-id { flex: 0 0 100%; min-height: 20px; overflow-wrap: anywhere; }
 
-/* Equal button heights and insets keep all three corner arcs concentric. */
-#memberPasswordDialog {
-  --password-action-height: 32px;
-  --password-inset: 22.4px;
-  padding: var(--password-inset);
-  border-radius: calc(var(--password-inset) + var(--password-action-height) / 2);
-}
-#memberPasswordDialog .btn {
-  box-sizing: border-box;
-  height: var(--password-action-height);
-  min-height: var(--password-action-height);
-  padding-top: 0;
-  padding-bottom: 0;
-  border-radius: calc(var(--password-action-height) / 2);
-  white-space: nowrap;
-}
-#memberPasswordDialog .section-head { margin-top: 0; min-height: var(--password-action-height); }
-#memberPasswordTitle { padding-left: calc(var(--password-action-height) / 2); overflow-wrap: anywhere; }
-#memberPasswordDialog .member-password-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
-#memberPasswordStatus:empty { display: none; }
+#smtpTestDialog .actions { justify-content: flex-end; }
+#smtpTestStatus { overflow-wrap: anywhere; }
+#smtpTestStatus:empty { display: none; }
 
 /* In-page delete confirmation, with concentric card and action corners. */
 .delete-confirm-card {
@@ -1420,7 +1149,443 @@ body[data-admin="false"] #shifts .card .time { position: relative; top: -3px; }
 
 #editStatusOptions[data-kind="field"] { width:240px;max-width:100%; }
 
-.ga-external-link { gap:8px;text-decoration:none; }
-.ga-external-link > span:first-child { min-width:0; }
-.ga-external-icon { display:inline-flex;align-items:center;margin-left:auto;flex-shrink:0; }
-.ga-external-icon[data-icon]::before { width:16px;height:16px;flex-basis:16px; }
+h2[data-icon]::before, h3[data-icon]::before { color: var(--md-primary); }
+.stats > .stat-with-icon { position: relative; padding-right: 48px; }
+.stat-with-icon::before {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 24px;
+  height: 24px;
+  opacity: .65;
+}
+.member-search[data-icon] { position: relative; display: inline-flex; align-items: center; }
+/* The 18px icon is centred on the centre of the 40px pill's left cap. */
+.member-search[data-icon]::before { position: absolute; left: 11px; color: var(--md-secondary); }
+/* The icon's room is text-indent, not padding: an auto-width input is sized from its padding, so animating padding would resize the whole bar. */
+.member-search[data-icon] input { padding-left: 16px; padding-right: 40px; text-indent: 22px; transition: text-indent 150ms ease, outline-color 150ms ease; }
+.member-search[data-icon]::before { transition: opacity 150ms ease; }
+.member-search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+/* Material search bar without a back action: while the field is focused or holds a query the
+   leading icon leaves and a clear button appears, centred on the centre of the pill's right cap. */
+.search-clear {
+  position: absolute; top: 0; bottom: 0; right: 0; aspect-ratio: 1;
+  display: grid; place-items: center;
+  margin: 0; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--md-on-surface-variant);
+  cursor: pointer; opacity: 0; visibility: hidden;
+  transition: opacity 150ms ease, visibility 150ms;
+}
+.search-clear:hover { background: color-mix(in srgb, var(--md-on-surface) 8%, transparent); }
+.search-clear:focus-visible { outline-offset: -4px; }
+.member-search[data-icon]:is(:focus-within, :has(input:not(:placeholder-shown)))::before { opacity: 0; }
+.member-search[data-icon]:is(:focus-within, :has(input:not(:placeholder-shown))) input { text-indent: 0; }
+.member-search:is(:focus-within, :has(input:not(:placeholder-shown))) .search-clear { opacity: 1; visibility: visible; }
+@media (max-width: 650px) {
+  .stats > .stat-with-icon { padding-right: 32px; }
+  .stat-with-icon::before { width: 18px; height: 18px; right: 9.6px; top: 12.8px; }
+}
+[data-icon="account-check-outline"] { --component-icon: url("/icon/components/account-check-outline.svg"); }
+[data-icon="account-group-outline"] { --component-icon: url("/icon/components/account-group-outline.svg"); }
+[data-icon="account-off-outline"] { --component-icon: url("/icon/components/account-off-outline.svg"); }
+[data-icon="account-plus-outline"] { --component-icon: url("/icon/components/account-plus-outline.svg"); }
+[data-icon="calendar-check-outline"] { --component-icon: url("/icon/components/calendar-check-outline.svg"); }
+[data-icon="calendar-clock-outline"] { --component-icon: url("/icon/components/calendar-clock-outline.svg"); }
+[data-icon="calendar-remove-outline"] { --component-icon: url("/icon/components/calendar-remove-outline.svg"); }
+[data-icon="chart-box-outline"] { --component-icon: url("/icon/components/chart-box-outline.svg"); }
+[data-icon="clipboard-text-outline"] { --component-icon: url("/icon/components/clipboard-text-outline.svg"); }
+[data-icon="clock-alert-outline"] { --component-icon: url("/icon/components/clock-alert-outline.svg"); }
+[data-icon="clock-outline"] { --component-icon: url("/icon/components/clock-outline.svg"); }
+[data-icon="email-outline"] { --component-icon: url("/icon/components/email-outline.svg"); }
+[data-icon="send"] { --component-icon: url("/icon/components/send.svg"); }
+[data-icon="database-outline"] { --component-icon: url("/icon/components/database-outline.svg"); }
+[data-icon="download"] { --component-icon: url("/icon/components/download.svg"); }
+[data-icon="lock-outline"] { --component-icon: url("/icon/components/lock-outline.svg"); }
+[data-icon="lock-reset"] { --component-icon: url("/icon/components/lock-reset.svg"); }
+[data-icon="magnify"] { --component-icon: url("/icon/components/magnify.svg"); }
+[data-icon="pencil-outline"] { --component-icon: url("/icon/components/pencil-outline.svg"); }
+[data-icon="plus"] { --component-icon: url("/icon/components/plus.svg"); }
+[data-icon="shield-account-outline"] { --component-icon: url("/icon/components/shield-account-outline.svg"); }
+[data-icon="swap-horizontal"] { --component-icon: url("/icon/components/swap-horizontal.svg"); }
+[data-icon="tune-variant"] { --component-icon: url("/icon/components/tune-variant.svg"); }
+[data-icon="upload"] { --component-icon: url("/icon/components/upload.svg"); }
+
+.stats.overview-stats > .stat-with-icon::before {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+[data-icon="link-off-outline"] { --component-icon: url("/icon/components/link-off-outline.svg"); }
+
+[data-icon="card-account-details-outline"] { --component-icon: url("/icon/components/card-account-details-outline.svg"); }
+
+[data-icon="file-download-outline"] { --component-icon: url("/icon/components/file-download-outline.svg"); }
+
+[data-icon="file-upload-outline"] { --component-icon: url("/icon/components/file-upload-outline.svg"); }
+
+[data-icon="check-circle-outline"] { --component-icon: url("/icon/components/check-circle-outline.svg"); }
+
+[data-icon="close-circle-outline"] { --component-icon: url("/icon/components/close-circle-outline.svg"); }
+
+[data-icon="check"] { --component-icon: url("/icon/components/check.svg"); }
+
+[data-theme="dark"] :is(.week-card.warn, .detail-member.late) { color: var(--md-on-warning-container); }
+[data-theme="dark"] :is(.week-card.danger, .detail-member.absent) { color: var(--md-on-error-container); }
+[data-theme="dark"] :is(.week-card.ok, .detail-member.normal) { color: var(--md-on-success-container); }
+[data-theme="dark"] .push-table th { background: var(--md-surface-low); }
+[data-theme="dark"] .push-table :is(th, td),
+[data-theme="dark"] .push-delivery { border-bottom-color: var(--md-outline-variant); }
+[data-theme="dark"] .md-select-menu { box-shadow: 0 0 0 1px var(--md-outline-variant), 0 8px 22.4px rgba(0, 0, 0, .45); }
+:root:not([data-theme="dark"]) :is(.about-panel, .log-table-wrap, .data-table-wrap, .weekly-table-wrap, .push-window) {
+  background: var(--md-surface-high);
+  border: 0;
+  box-shadow: var(--md-card-elevation);
+}
+:root:not([data-theme="dark"]) .about-panel .card,
+:root:not([data-theme="dark"]) :is(.card, .about-panel) :is(.push-window, .weekly-slot) {
+  background: var(--md-surface-high);
+  border: 1px solid var(--md-card-outline);
+  box-shadow: none;
+}
+/* Filled: nested read-only content blocks. */
+:root:not([data-theme="dark"]) :is(.card, .about-panel) :is(.swap-side, .push-section) {
+  background: var(--md-card-filled);
+  border: 0;
+  box-shadow: none;
+}
+[data-theme="dark"] :is(.about-panel, .log-table-wrap, .data-table-wrap, .weekly-table-wrap, .push-window) {
+  --md-surface-high: var(--md-surface);
+  --schedule-surface-high: var(--md-surface);
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  box-shadow: none;
+}
+
+/* Material 3 checkbox (m3.material.io/components/checkbox): 18px container, 2px corners, 2px outline,
+   40px circular state layer. Selecting fills the container, then the mark is drawn left to right.
+   Switches and the filter-chip icons keep their own look. */
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input) {
+  -webkit-appearance: none; appearance: none;
+  position: relative; box-sizing: border-box; flex: 0 0 18px;
+  width: 18px; height: 18px; min-width: 0; min-height: 0; padding: 0;
+  border: 2px solid var(--md-on-surface-variant); border-radius: 2px;
+  background: transparent; outline: 0; cursor: pointer;
+  transition: background-color 150ms cubic-bezier(.2, 0, 0, 1), border-color 150ms cubic-bezier(.2, 0, 0, 1);
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::before {
+  content: ""; position: absolute; inset: -13px; border-radius: 50%;
+  background: var(--md-on-surface); opacity: 0; pointer-events: none;
+  transition: opacity 150ms linear;
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::after {
+  content: ""; position: absolute; inset: -2px;
+  background: var(--md-on-primary);
+  --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M4 9.4l3.4 3.4L14 5.8' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E");
+  -webkit-mask: var(--check-mark) center / contain no-repeat; mask: var(--check-mark) center / contain no-repeat;
+  clip-path: inset(0 100% 0 0); opacity: 0;
+  transition: opacity 100ms linear, clip-path 0s 100ms;
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):is(:checked, :indeterminate) {
+  background: var(--md-primary); border-color: var(--md-primary);
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):is(:checked, :indeterminate)::before { background: var(--md-primary); }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):is(:checked, :indeterminate)::after {
+  clip-path: inset(0); opacity: 1;
+  transition: clip-path 200ms cubic-bezier(.2, 0, 0, 1) 80ms, opacity 0s 80ms;
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):indeterminate::after {
+  --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M4.5 9h9' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E");
+}
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):hover:not(:checked, :indeterminate, :disabled) { border-color: var(--md-on-surface); }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):hover::before { opacity: .08; }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):is(:focus-visible, :active)::before { opacity: .12; }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):disabled { opacity: .38; cursor: default; }
+:root input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):disabled::before { display: none; }
+:root[data-motion="reduced"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input),
+:root[data-motion="reduced"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::before,
+:root[data-motion="reduced"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input)::after { transition: none; }
+
+/* Wiki containers nested inside the about panel use outlined white surfaces. */
+:root:not([data-theme="dark"]) #wikiPanel :is(.wiki-tile, .wiki-page, .wiki-feature-list) {
+  background: #FFFFFF;
+  border: 1px solid var(--md-card-outline);
+  box-shadow: none;
+}
+:root:not([data-theme="dark"]) #wikiPanel :is(.wiki-feature, .wiki-note) {
+  background: #FFFFFF;
+}
+
+/* Daily scheduling: elevated outer card and outlined nested cards. */
+:root:not([data-theme="dark"]) .card.weekly-config {
+  background: #FFFFFF;
+  border: 0;
+  box-shadow: var(--md-card-elevation);
+}
+:root:not([data-theme="dark"]) .weekly-config .weekly-slot {
+  background: #FFFFFF;
+  border: 1px solid var(--md-card-outline);
+  box-shadow: none;
+}
+[data-theme="dark"] .weekly-config .weekly-slot {
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  box-shadow: none;
+}
+:root body .outlined-field > select + span {
+  top: 0;
+  transform: translateY(-50%) scale(.75);
+  background: var(--md-surface-high);
+}
+:root body .outlined-field > select:focus + span { color: var(--md-primary); }
+:root body .outlined-field > select + span {
+  top: 21px; transform: translateY(-50%); background: transparent;
+}
+:root body .outlined-field:focus-within > select + span,
+:root body .outlined-field:has(> select option:checked:not([value=""])) > select + span {
+  top: 0; transform: translateY(-50%) scale(.75); background: var(--md-surface-high);
+}
+
+:root:not([data-theme="dark"]) #fieldBoard .field-person {
+  border: 1px solid currentColor;
+  box-shadow: none;
+}
+:root:not([data-theme="dark"]) #fieldBoard .field-person.done {
+  background: var(--schedule-primary-container, #cfe7fb);
+}
+:root:not([data-theme="dark"]) #fieldBoard .field-person.missing {
+  background: var(--schedule-error-container, #ffdcdc);
+}
+
+/* Data management: one outer card, outlined children and a filled table header. */
+#dataPage .data-layout {
+  --data-card-inset: 16px;
+  padding: var(--data-card-inset);
+  border-radius: 32px;
+  background: var(--md-surface-high);
+  box-shadow: var(--md-card-elevation);
+}
+#dataPage .data-tables,
+:is(#dataPage .data-table-wrap, #logsPage .log-table-wrap) {
+  --md-radius-xl: 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: 16px;
+  background: var(--md-surface-high);
+  box-shadow: none;
+}
+#dataPage .data-tables { --data-pad: 7px; }
+#dataPage .data-table-item { border-radius: 8px; }
+:is(#dataPage .data-table-wrap, #logsPage .log-table-wrap) {
+  padding: 7px; display: flex; flex-direction: column; overflow: hidden;
+}
+:is(#dataPage .data-table-scroll, #logsPage .log-table-scroll) {
+  flex: 1 1 auto; min-height: 0; min-width: 0;
+  overflow: auto; overscroll-behavior: none; border-radius: 8px;
+}
+/* 1px outline + 7px inset + 8px inner radius aligns the corner arcs. */
+:is(#dataPage #dataHead, #logsPage .log-table thead) {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--md-surface-high);
+}
+:is(#dataPage #dataHead, #logsPage .log-table thead) th {
+  position: static;
+  background: var(--md-surface-low);
+  color: var(--md-on-surface);
+}
+:is(#dataPage #dataHead, #logsPage .log-table thead) th:first-child { border-radius: 8px 0 0 8px; }
+:is(#dataPage #dataHead, #logsPage .log-table thead) th:last-child { border-radius: 0 8px 8px 0; }
+:is(#dataPage #dataHead, #logsPage .log-table thead) th:only-child { border-radius: 8px; }
+:is(#dataPage .data-table, #logsPage .log-table) td { vertical-align: middle; }
+#dataPage .data-table td.data-actions { display: table-cell; }
+#dataPage .data-action-buttons { display: flex; align-items: center; gap: 4.8px; }
+#dataPage .data-row { border-radius: 8px; }
+#dataPage .data-row:hover {
+  position: relative;
+  z-index: 1;
+  box-shadow: none;
+}
+#dataPage .data-row:not(.selected):hover td,
+#dataPage .data-table-item:not(.active):hover {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container, var(--md-on-surface));
+}
+#dataPage .data-table-item:hover { box-shadow: none; outline: none; }
+:is(#dataPage .data-row, #logsPage .log-table tbody tr):hover td:first-child { border-radius: 8px 0 0 8px; }
+:is(#dataPage .data-row, #logsPage .log-table tbody tr):hover td:last-child { border-radius: 0 8px 8px 0; }
+:is(#dataPage .data-table-scroll, #logsPage .log-table-scroll)::-webkit-scrollbar:vertical {
+  background: transparent;
+}
+:root:not([data-theme="dark"]) #dataPage .data-layout,
+:root:not([data-theme="dark"]) #dataPage .data-tables,
+:root:not([data-theme="dark"]) :is(#dataPage .data-table-wrap, #logsPage .log-table-wrap) {
+  --md-surface-high: #FFFFFF;
+  background: #FFFFFF;
+}
+:root:not([data-theme="dark"]) :is(#dataPage .data-tables, #dataPage .data-table-wrap, #logsPage .log-table-wrap) {
+  border: 1px solid var(--md-outline, #74777F);
+  outline: 1px solid var(--md-outline, #74777F);
+  outline-offset: -1px;
+  box-shadow: none;
+}
+[data-theme="dark"] #dataPage .data-layout {
+  background: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  box-shadow: none;
+}
+@media(max-width:650px) {
+  #dataPage .data-layout { --data-card-inset: 12px; border-radius: 28px; }
+}
+
+#logsPage .log-table-wrap { max-height: 60vh; }
+#logsPage .log-table-scroll { --data-bar: 10px; --data-head-h: 36px; }
+#logsPage .log-table tbody tr:hover td {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container, var(--md-on-surface));
+}
+
+/* Standard vertical menus share a continuous surface and rectangular state layers. */
+:root body .md-select-menu {
+  --md-menu-row-height: 40px;
+  --md-select-inner-radius: 4px;
+  min-width: 112px;
+  padding: 8px 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--md-surface-high);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 16%), 0 4px 12px rgb(0 0 0 / 12%);
+}
+:root body .md-select-option {
+  min-height: var(--md-menu-row-height);
+  height: var(--md-menu-row-height);
+  margin: 0;
+  padding: 0 12px;
+  border-radius: 0;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+:root body .md-select-list { scrollbar-width: none; }
+:root body .md-select-list::-webkit-scrollbar { display: none; }
+/* Search and results form two distinct groups. Eight results fit before scrolling. */
+:root body .md-select-menu.grouped {
+  padding: 2px;
+  gap: 4px;
+  border-radius: 22px;
+  background: transparent;
+  box-shadow: none;
+}
+:root body .md-select-menu.grouped .md-select-search:not([hidden]) {
+  box-sizing: border-box;
+  display: flex;
+  margin: 0;
+  padding: 12px;
+  border-radius: 20px 20px 12px 12px;
+  background: var(--md-surface-high);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 24%);
+}
+:root body .md-select-menu.grouped .md-select-search input {
+  height: 42px;
+  min-height: 42px;
+  padding-left: 12px;
+  padding-right: 36px;
+  text-indent: 20px;
+  transition: text-indent 150ms ease, outline-color 150ms ease;
+}
+:root body .md-select-menu.grouped .md-select-search:is(:focus-within, :has(input:not(:placeholder-shown))) input { text-indent: 0; }
+:root body .md-select-menu.grouped .md-select-search::before { left: 22px; }
+:root body .md-select-menu.grouped .md-select-search .search-clear { top: 12px; bottom: 12px; right: 12px; }
+:root body .md-select-menu.grouped .md-select-list {
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  max-height: calc(var(--md-menu-row-height) * 8 + 16px);
+  padding: 8px 0;
+  border-radius: 12px 12px 20px 20px;
+  background: var(--md-surface-high);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 24%);
+}
+:root body .md-select-menu.grouped .md-select-empty {
+  margin: 0;
+  padding: 12px;
+  background: var(--md-surface-high);
+  border-radius: 12px 12px 20px 20px;
+}
+:root body .md-select-menu.grouped .md-select-option {
+  margin: 0 4px;
+  border-radius: 12px;
+}
+
+/* Empty selects use their floating label as the resting placeholder. */
+:root body :is(.m3-outlined-label, .outlined-field):not(:focus-within) > select:has(option:checked[value=""]) {
+  color: transparent;
+}
+#swapForm > .hint { margin: 12px 0 20px; }
+#swapForm .swap-picker { gap: 16px; margin-bottom: 20px; }
+#swapForm .swap-picker > label { min-width: 0; }
+#settingsPage label.m3-outlined-label > :is(input, textarea, select) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+:root[data-theme="dark"] #deleteConfirmDialog[data-context="member"] {
+  outline: 1px solid var(--md-error-container);
+}
+
+:root[data-motion="full"] :is(.md-select-option,.permission-option,.permission-group-summary,.segment) {
+  transition: background-color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+    color var(--motion-effects-fast-duration) var(--motion-effects-fast),
+    box-shadow var(--motion-effects-duration) var(--motion-effects),
+    border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast);
+}
+/* Selected connected buttons round fully; the pressed segment expands by 15%. */
+:root[data-motion="full"] .status-option {
+  transition: border-radius var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+    flex-grow var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+    background-color var(--motion-effects-duration) var(--motion-effects), color var(--motion-effects-duration) var(--motion-effects);
+}
+:root[data-motion="full"] .status-option:active { flex-grow:1.15; }
+/* Switch handle movement and size are independent of track color. */
+:root[data-motion="full"] .sso-toggle span { transition: background-color 150ms linear,border-color 150ms linear; }
+:root[data-motion="full"] .sso-toggle span::after {
+  transition: transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast),
+    width 250ms cubic-bezier(.2,0,0,1),height 250ms cubic-bezier(.2,0,0,1),margin 250ms cubic-bezier(.2,0,0,1),background-color 67ms linear;
+}
+.sso-toggle input:not(:checked) + span::after { transform:translateX(0) scale(.8); }
+.sso-toggle input:checked + span::after { transform:translateX(20px) scale(1); }
+.sso-toggle input:not(:disabled):active + span::after { transform:translateX(0) scale(1.2); }
+.sso-toggle input:not(:disabled):checked:active + span::after { transform:translateX(20px) scale(1.2); }
+:root[data-motion="full"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input) {
+  transition: background-color 150ms linear,border-color 150ms linear;
+}
+:root[data-motion="full"] input[type=checkbox]:not([role=switch], .md-switch input, .push-column input):checked::after {
+  transition: clip-path 200ms cubic-bezier(.2,0,0,1) 50ms,opacity 50ms linear;
+}
+:root[data-motion="full"] .member-search input { transition: text-indent 200ms cubic-bezier(.2,0,0,1),outline-color 150ms linear; }
+:root[data-motion="full"] .member-search::before,
+:root[data-motion="full"] .search-clear { transition: opacity 150ms linear,visibility 150ms; }
+:root[data-motion="full"] dialog[open] :is(.delete-confirm-actions,.member-state-actions) { animation:m3-dialog-actions 300ms linear both; }
+/* The JS menu lifecycle provides surface clipping and item stagger, without text scaling. */
+:root[data-motion="full"] .md-select-menu { transition:none;transform:none; }
+:root[data-motion="full"] .md-select-menu.open { opacity:1;transform:none; }
+:root[data-motion="full"] details { interpolate-size:allow-keywords; }
+@supports (content-visibility: hidden) {
+  :root[data-motion="full"] details::details-content {
+    block-size:0;overflow:clip;
+    transition:block-size var(--motion-spatial-duration) var(--motion-spatial),content-visibility var(--motion-spatial-duration) allow-discrete;
+  }
+  :root[data-motion="full"] details[open]::details-content { block-size:auto; }
+}
+:root[data-motion="full"] :is(.wiki-page,.permission-branch) > summary::after { transition:transform var(--motion-spatial-fast-duration) var(--motion-spatial-fast); }
+:root[data-motion="full"] :is(.push-column,.permission-tag) { transition:background-color 150ms linear,color 150ms linear; }
+/* M3 switch handle sizes: 16px unselected, 24px selected, 28px pressed. */
+.sso-toggle span { position:relative; }
+.sso-toggle span::after { position:absolute;left:2px;top:2px;width:24px;height:24px;margin:0; }
+.sso-toggle input:not(:checked) + span::after { transform:translateX(0) scale(.666667); }
+.sso-toggle input:checked + span::after { transform:translateX(20px) scale(1); }
+.sso-toggle input:not(:disabled):active + span::after { transform:translateX(0) scale(1.166667); }
+.sso-toggle input:not(:disabled):checked:active + span::after { transform:translateX(20px) scale(1.166667); }
+:root[data-motion="full"] .sso-toggle span {
+  transition:background-color var(--motion-effects-duration) var(--motion-effects),border-color var(--motion-effects-duration) var(--motion-effects);
+}
