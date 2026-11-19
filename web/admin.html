@@ -257,7 +257,7 @@ SOFTWARE.
 
       <section id="membersPage" hidden>
         <div class="hero">
-          <div><h1 data-icon="account-group-outline">用户管理</h1><p>按权限组管理账号。新账号默认加入会员组，初始密码为 gg2017。</p></div>
+          <div><h1 data-icon="account-group-outline">用户管理</h1><p>按权限组管理账号。新账号默认加入会员组。</p></div>
         </div>
         <div class="members-toolbar">
           <label class="member-search" data-icon="magnify"><input id="memberSearch" type="search" placeholder="搜索姓名" autocomplete="off" aria-label="搜索用户"></label>
@@ -664,7 +664,7 @@ SOFTWARE.
         <form id="memberForm" method="post">
           <div class="section-head"><h2>添加账号</h2><button type="button" id="closeMember" class="btn tonal" data-icon="close">关闭</button></div>
           <label>姓名<input name="username" maxlength="64" placeholder="值班人员姓名" required></label>
-          <p class="hint">初始密码为 gg2017，用户登录后可自行修改。</p>
+          <p class="hint">创建后会显示临时密码，用户首次使用时需设置新密码。</p>
           <p id="memberFormStatus" role="alert"></p>
           <button type="submit" class="btn primary" data-icon="account-plus-outline">创建账号</button>
         </form>
@@ -672,6 +672,14 @@ SOFTWARE.
     </div>
   </main>
 </div>
+<dialog id="temporaryPasswordsDialog" aria-labelledby="temporaryPasswordsTitle">
+  <div class="section-head">
+    <h2 id="temporaryPasswordsTitle">临时密码</h2>
+    <button type="button" id="closeTemporaryPasswords" class="btn tonal" data-icon="close">关闭</button>
+  </div>
+  <p>密码只显示一次。请复制后分别私下交给对应用户。</p>
+  <label>账号与临时密码<textarea id="temporaryPasswordsText" rows="5" readonly spellcheck="false" autocomplete="off"></textarea></label>
+</dialog>
 <dialog id="passwordEditor" aria-labelledby="passwordTitle">
   <form id="passwordForm" method="post">
     <div class="section-head">

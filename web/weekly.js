@@ -56,7 +56,8 @@ $('weeklyForm').onsubmit = async e => {
   const submit = e.currentTarget.querySelector('[type=submit]'); submit.disabled = true;
   try {
     const saved = await api('/api/admin/weekly-roster', 'PUT', readWeekly());
-    const extra = saved.members_created ? `，并为 ${saved.members_created} 位新人员创建了账号（初始密码 gg2017）` : '';
+    showTemporaryPasswords(saved.temporary_passwords);
+    const extra = saved.members_created ? `，并为 ${saved.members_created} 位新人员创建了账号` : '';
     $('weeklyStatus').textContent = `每周排班已保存${extra}。生成后可在每日排班中查看和单独调整。`;
   } catch (err) { $('weeklyStatus').textContent = err.message; }
   finally { submit.disabled = false; }
@@ -101,7 +102,8 @@ $('publishForm').onsubmit = async e => {
   if (end < start) { $('weeklyStatus').textContent = '结束日期不能早于开始日期。'; return; }
   submit.disabled = true;
   try {
-    await api('/api/admin/weekly-roster', 'PUT', readWeekly());
+    const saved = await api('/api/admin/weekly-roster', 'PUT', readWeekly());
+    showTemporaryPasswords(saved.temporary_passwords);
     const result = await api('/api/admin/weekly-roster/publish', 'POST', {start_date:start, end_date:end});
     const note = result.created === 0 && result.skipped === 0
       ? '所选区间内没有需要生成的班次。'
@@ -116,7 +118,8 @@ $('completeMembers').onclick = async () => {
   const button = $('completeMembers'); button.disabled = true;
   try {
     const result = await api('/api/admin/members/provision', 'POST');
-    $('weeklyStatus').textContent = `已按已保存的排班表补全用户：新增 ${result.created} 个，已存在 ${result.existing} 个；新用户初始密码为 gg2017。`;
+    showTemporaryPasswords(result.temporary_passwords);
+    $('weeklyStatus').textContent = `已按已保存的排班表补全用户：新增 ${result.created} 个，已存在 ${result.existing} 个。`;
   } catch (err) { $('weeklyStatus').textContent = err.message; }
   finally { button.disabled = false; }
 };

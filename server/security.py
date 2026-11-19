@@ -14,11 +14,10 @@ SESSION_TTL = 4 * 60 * 60
 MAX_ATTEMPTS = 8
 WINDOW_SECONDS = 10 * 60
 
-# Duty accounts sign in on shared club devices and mistype often, so their limit is
-# looser: 50 failures against one canonical account, then a 5-minute cooldown.
+# Duty accounts have a higher threshold. Throttle failed verifications only.
 MEMBER_MAX_ATTEMPTS = 50
 MEMBER_WINDOW_SECONDS = 5 * 60
-MEMBER_IP_MAX_ATTEMPTS = MEMBER_MAX_ATTEMPTS * 6
+MEMBER_IP_MAX_ATTEMPTS = 12
 
 
 class AttemptLimiter:
@@ -56,16 +55,18 @@ class AttemptLimiter:
         with self._lock:
             hits = self._recent(key)
             if time.monotonic() < self._blocked_until.get(key, 0):
-                return
+                return False
             hits.append(time.monotonic())
             self._hits[key] = hits
             self._hits.move_to_end(key)
-            if len(hits) >= self.max_attempts:
+            throttled = len(hits) >= self.max_attempts
+            if throttled:
                 self._blocked_until[key] = time.monotonic() + self.window
             # Bound memory: only the newest few thousand keys are worth remembering.
             while len(self._hits) > 4096:
                 removed, _ = self._hits.popitem(last=False)
                 self._blocked_until.pop(removed, None)
+            return throttled
 
     def reset(self, key):
         with self._lock:
@@ -73,35 +74,41 @@ class AttemptLimiter:
             self._blocked_until.pop(key, None)
 
 
-def member_login_account_key(name: str) -> str:
+def login_account_key(role: str, name: str) -> str:
     """Bound key size while keeping case-sensitive account identities distinct."""
     import hashlib
-    return 'member:account:' + hashlib.sha256(name.encode('utf-8')).hexdigest()
+    return f'{role}:account:' + hashlib.sha256(name.encode('utf-8')).hexdigest()
 
 
 def client_key(request) -> str:
-    """Use the socket peer for check-in unless a trusted proxy header is configured."""
-    return _proxy_client_key(request, os.environ.get("CLIENT_IP_HEADER", "").strip())
-
-
-def login_client_key(request) -> str:
-    """Resolve the login source through a trusted proxy, defaulting to X-Real-IP."""
-    return _proxy_client_key(request, os.environ.get("CLIENT_IP_HEADER", "").strip() or "X-Real-IP")
-
-
-def _proxy_client_key(request, header: str) -> str:
+    """Use the single client address overwritten by a configured trusted proxy."""
     peer = request.client.host if request.client else "unknown"
-    if not header:
+    if not trusted_proxy(request):
         return peer
+    header = os.environ.get("CLIENT_IP_HEADER", "").strip() or "X-Real-IP"
+    values = request.headers.getlist(header)
     try:
-        address = ipaddress.ip_address(peer)
-        networks = [ipaddress.ip_network(value.strip(), strict=False)
-                    for value in os.environ.get("LOGIN_TRUSTED_PROXIES", "").split(",") if value.strip()]
-        if any(address in network for network in networks):
-            return str(ipaddress.ip_address(request.headers.get(header, "").strip()))
+        if len(values) != 1:
+            return "unknown"
+        address = ipaddress.ip_address(values[0].strip())
+        return str(getattr(address, 'ipv4_mapped', None) or address)
     except ValueError:
-        pass
-    return peer
+        # Avoid treating the proxy's loopback address as the actual caller.
+        return "unknown"
+
+
+def trusted_proxy(request) -> bool:
+    """Only configured socket peers may supply proxy headers."""
+    try:
+        address = ipaddress.ip_address(request.client.host if request.client else '')
+        networks = [ipaddress.ip_network(value.strip(), strict=False)
+                    for value in os.environ.get('LOGIN_TRUSTED_PROXIES', '').split(',') if value.strip()]
+        return any(address in network for network in networks)
+    except ValueError:
+        return False
+
+
+login_client_key = client_key
 
 
 class IdentityCache:

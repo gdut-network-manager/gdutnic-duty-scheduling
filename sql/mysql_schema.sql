@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS member_accounts (
   student_id VARCHAR(64) NOT NULL DEFAULT '',
   active TINYINT NOT NULL DEFAULT 1, permissions VARCHAR(191) NOT NULL DEFAULT '',
   group_id VARCHAR(64) NOT NULL DEFAULT '', sso_id VARCHAR(64) NOT NULL DEFAULT '',
-  sso_auto_link_blocked TINYINT NOT NULL DEFAULT 0
+  sso_auto_link_blocked TINYINT NOT NULL DEFAULT 0, must_change_password TINYINT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 CREATE TABLE IF NOT EXISTS login_sessions (
  id CHAR(64) PRIMARY KEY, kind VARCHAR(10) NOT NULL, username VARCHAR(64) NOT NULL,

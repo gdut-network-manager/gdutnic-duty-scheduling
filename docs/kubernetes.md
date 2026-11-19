@@ -205,11 +205,11 @@ upstream 用 `http://duty-scheduling.gdutnic.svc.cluster.local:80`。
 - TLS 在最外层终止时，Ingress **不要**配 `tls`，也不要开 `ssl-redirect`，否则 ingress-nginx 会把内部 HTTP 请求再次 308 到 HTTPS，形成回环。
 - ingress-nginx 默认 `proxy-body-size` 只有 1m，导入名单/备份会 413，需要在 Ingress 注解里放开（示例文件头部已列出）。
 - 外层 Nginx 到 ingress 如果走 HTTPS，需要 `proxy_ssl_server_name on` 并设置 SNI；证书由内部 CA 签发时再配 `proxy_ssl_trusted_certificate`。
-- ingress-nginx 想在自己的日志里看到真实 IP，需要在 controller ConfigMap 里设 `use-forwarded-headers: "true"` 和 `compute-full-forwarded-for: "true"`；应用本身只读 `X-Real-Client-IP`，不依赖这两项。
+- ingress-nginx 想在自己的日志里看到真实 IP，需要在 controller ConfigMap 里设 `use-forwarded-headers: "true"` 和 `compute-full-forwarded-for: "true"`；应用使用配置的单一客户端 IP 头，不依赖这两项。
 
 ## 6. 真实客户端 IP（IP 签到/限流）
 
-配置 `clientIpHeader` 后，还需通过 `environment.LOGIN_TRUSTED_PROXIES` 填写应用直连代理的 IP 或 CIDR（多个值用逗号分隔）。只有来自这些地址的请求才能使用该头。未配置 `clientIpHeader` 时，打卡和外勤使用直连地址，登录限流对受信任的直连代理读取 `X-Real-IP`。在最外层 Nginx 上**覆盖写**：
+配置 `clientIpHeader` 后，还需通过 `environment.LOGIN_TRUSTED_PROXIES` 填写应用直连代理的 IP 或 CIDR（多个值用逗号分隔）。只有来自这些地址的请求才能使用该头。未配置 `clientIpHeader` 时，可信代理默认使用 `X-Real-IP`。登录限流、打卡和外勤使用同一来源地址。在最外层 Nginx 上**覆盖写**：
 
 ```nginx
 location / {
@@ -226,7 +226,7 @@ location / {
 要点：
 
 - 必须用 `proxy_set_header` 覆盖，不能用 `add_header` 追加；否则客户端可以自己伪造同名头。
-- 应用只需要 `X-Real-Client-IP`；`X-Forwarded-For` 和 `X-Forwarded-Proto` 是给其他代理/排障用的，应用不读。
+- 示例将 `X-Real-Client-IP` 配为单一客户端地址。TLS 在代理终止时，可用 Helm 的 `publicBaseUrl` 固定登录来源；未配置时，应用可从可信代理覆写的 `X-Forwarded-Proto` 判断对外协议。
 - ingress-nginx 会原样透传未知头，不需要改 controller 的全局配置。
 - 启用后，登录限流、`/api/network-access`、打卡/外勤的网段限制都会使用真实 IP。项目现有的「打卡设置 → 来源 IP 限制」会直接生效。
 - 如果入口可以被绕过（直接访问 NodePort/Ingress/LoadBalancer），这个头就可以被伪造。请只把入口暴露给最外层 Nginx。

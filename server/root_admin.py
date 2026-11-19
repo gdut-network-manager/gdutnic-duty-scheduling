@@ -131,8 +131,14 @@ def take_generated():
 
 
 def verify(password):
+    return authenticate(password) is not None
+
+
+def authenticate(password):
     data = _load()
-    return bool(data) and admin_store._verify_password(str(password or ''), str(data['password']))
+    if data and admin_store._verify_password(str(password or ''), str(data['password'])):
+        return _password_version(data)
+    return None
 
 
 def change_password(new_password, *, old_password=None):
