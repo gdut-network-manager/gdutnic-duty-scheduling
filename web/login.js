@@ -5,7 +5,6 @@
   const form = get(admin ? 'authForm' : 'memberLoginForm');
   const status = get(admin ? 'authStatus' : 'memberLoginStatus');
   const submit = form.querySelector('[type=submit]');
-  const newPassword = form.elements.new_password;
   const action = form.dataset.registering === 'true' ? 'register' : 'login';
   if (!window.fetch || !window.AbortSignal?.timeout) return;
 
@@ -16,12 +15,6 @@
     if (response.status === 405) throw new Error('登录请求被拒绝（HTTP 405），请刷新后重试。');
     const data = await response.json().catch(() => null);
     if (!response.ok) {
-      if (response.headers.get('X-Password-Change-Required') === '1') {
-        get('loginNewPassword').hidden = false;
-        newPassword.disabled = false;
-        newPassword.required = true;
-        newPassword.focus();
-      }
       throw new Error(typeof data?.detail === 'string' ? data.detail : `登录服务请求失败（HTTP ${response.status}）`);
     }
     if (!data) throw new Error('登录服务返回了无法识别的响应，请稍后重试。');

@@ -26,7 +26,6 @@
     <input type="hidden" name="login_csrf" value="$login_csrf">
     <label class="outlined-field"><input name="username" autocomplete="username" placeholder="$username_placeholder" $username_required><span>用户名</span></label>
     <label class="outlined-field"><input name="password" type="password" autocomplete="current-password" placeholder=" " required><span>密码</span></label>
-    <label id="loginNewPassword" class="outlined-field" $password_change_hidden><input name="new_password" type="password" autocomplete="new-password" placeholder=" " minlength="6" maxlength="128" $password_change_required><span>新密码</span></label>
     <p id="authStatus" class="admin-auth-status" role="alert">$login_error</p>
     <div class="auth-actions"><button type="button" class="btn tonal" data-keycloak-login="admin" hidden><img class="sso-org-icon" src="/icon/gdutnic.png" alt="" aria-hidden="true"><span>通过GDUTNIC</span></button><button id="authSubmit" type="submit" class="btn primary" data-icon="login">$auth_submit</button></div>
   </form>

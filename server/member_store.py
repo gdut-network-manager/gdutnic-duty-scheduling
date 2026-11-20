@@ -1,38 +1,25 @@
 """Duty accounts. Administrators are accounts that carry the schedule/accounts/field permissions."""
 import hashlib
-import secrets
 
 from server import admin_store, db, permissions as perms_store, weekly_store
 
-_RETIRED_PASSWORD = 'gg2017'
+INITIAL_PASSWORD = 'gg2017'
 _DUMMY_HASH = '0' * 32 + '$' + '0' * 64
 
 
 def _validate_password(password):
     if not isinstance(password, str) or not 6 <= len(password) <= 128:
         raise ValueError('新密码长度应为 6～128 位')
-    if password == _RETIRED_PASSWORD:
-        raise ValueError('不能使用已停用的旧初始密码')
 
 
-def retire_shared_passwords():
-    """Revoke the old default once, without rotating any personalized password."""
-    key = 'member_shared_password_retired'
-    with db.read() as conn:
-        if db.get_setting(conn, key):
-            return 0
-        rows = conn.execute(
-            "SELECT username,password FROM member_accounts WHERE must_change_password=0 AND password<>''").fetchall()
-    matches = [row for row in rows if admin_store._verify_password(_RETIRED_PASSWORD, row['password'])]
-    retired = 0
+def migrate_temporary_passwords():
+    """Replace outstanding temporary credentials; leave chosen passwords intact."""
     with db.write() as conn:
-        for row in matches:
-            if conn.execute("UPDATE member_accounts SET password='',must_change_password=1 WHERE username=? AND password=?",
-                            (row['username'], row['password'])).rowcount:
-                conn.execute('DELETE FROM login_sessions WHERE username=?', (row['username'],))
-                retired += 1
-        db.set_setting(conn, key, True)
-    return retired
+        names = [row['username'] for row in conn.execute(
+            'SELECT username FROM member_accounts WHERE must_change_password=1')]
+        for name in names:
+            _reset_password(conn, name)
+    return len(names)
 
 
 def roster_names():
@@ -79,7 +66,6 @@ def create_missing(names, *, authorize=None):
     from server import root_admin
     reserved = root_admin.username()
     names = [name for name in names if name != reserved]
-    credentials = []
     with db.write() as conn:
         accounts = conn.execute('SELECT username,student_id FROM member_accounts').fetchall()
         existing = {row['username'] for row in accounts}
@@ -90,13 +76,10 @@ def create_missing(names, *, authorize=None):
         if missing:
             if authorize is not None:
                 authorize()
-            credentials = [{'username': name, 'password': secrets.token_urlsafe(24)} for name in missing]
             conn.executemany(
-                'INSERT INTO member_accounts(username,password,active,group_id,must_change_password) VALUES(?,?,1,?,1)',
-                [(item['username'], admin_store._hash_password(item['password']), perms_store.DEFAULT_GROUP)
-                 for item in credentials])
-    return {'created': len(credentials), 'existing': len(names) - len(credentials),
-            'temporary_passwords': credentials}
+                'INSERT INTO member_accounts(username,password,active,group_id) VALUES(?,?,1,?)',
+                [(name, admin_store._hash_password(INITIAL_PASSWORD), perms_store.DEFAULT_GROUP) for name in missing])
+    return {'created': len(missing), 'existing': len(names) - len(missing)}
 
 
 def create(name, password=None):
@@ -104,19 +87,18 @@ def create(name, password=None):
     if not name or len(name) > 64:
         raise ValueError('请填写姓名，最多 64 字')
     _reject_root(name, '添加')
-    temporary = password is None
-    if temporary:
-        password = secrets.token_urlsafe(24)
+    if password is None:
+        password = INITIAL_PASSWORD
     _validate_password(password)
     perms_store.ensure_defaults()
     with db.write() as conn:
         if conn.execute('SELECT username FROM member_accounts WHERE username=? OR student_id=?', (name, name)).fetchone():
             raise ValueError('该姓名账号已存在')
         conn.execute(
-            'INSERT INTO member_accounts(username,password,active,permissions,group_id,must_change_password) VALUES(?,?,1,?,?,?)',
+            'INSERT INTO member_accounts(username,password,active,permissions,group_id) VALUES(?,?,1,?,?)',
             (name, admin_store._hash_password(password), perms_store.encode(perms_store.DEFAULT_PERMISSIONS),
-             perms_store.DEFAULT_GROUP, int(temporary)))
-    return {'created': 1, 'existing': 0, 'temporary_passwords': [{'username': name, 'password': password}] if temporary else []}
+             perms_store.DEFAULT_GROUP))
+    return {'created': 1, 'existing': 0}
 
 
 def delete(name):
@@ -134,7 +116,7 @@ def list_accounts():
     perms_store.ensure_defaults()
     with db.read() as conn:
         rows = [dict(r) for r in conn.execute(
-            'SELECT m.username,m.student_id,m.active,m.must_change_password,m.group_id,g.name AS group_name,g.permissions, '
+            'SELECT m.username,m.student_id,m.active,m.group_id,g.name AS group_name,g.permissions, '
             '(k.identity_key IS NOT NULL) AS sso_bound '
             'FROM member_accounts m LEFT JOIN permission_groups g ON g.id=m.group_id '
             'LEFT JOIN keycloak_links k ON k.username=m.username AND k.account_key=m.sso_id ORDER BY m.username')]
@@ -143,7 +125,6 @@ def list_accounts():
         row['permissions'] = sorted(perms_store.decode(row.get('permissions')))
         row['root'] = False
         row['sso_bound'] = bool(row['sso_bound'])
-        row['must_change_password'] = bool(row['must_change_password'])
     return rows
 
 
@@ -154,7 +135,7 @@ def _login_account(value):
         return None
     with db.read() as conn:
         rows = conn.execute(
-            'SELECT username,password,active,must_change_password FROM member_accounts '
+            'SELECT username,password,active FROM member_accounts '
             'WHERE username=? OR student_id=? LIMIT 2', (value, value)).fetchall()
     # Imported/externally edited data may contain conflicting aliases. Fail closed.
     if len(rows) != 1 or root_admin.is_root(rows[0]['username']):
@@ -171,22 +152,22 @@ def resolve_login_name(value):
 def _verified_version(row, password):
     stored = row['password'] if row and row['active'] and row['password'] else None
     matches = admin_store._verify_password(password, stored or _DUMMY_HASH)
-    if stored and matches and password != _RETIRED_PASSWORD:
+    if stored and matches:
         return hashlib.sha256(stored.encode()).hexdigest()
     return None
 
 
 def authenticate_login(value, password):
     """Validate a username or student ID against the same fetched account record."""
-    name, version, change_required = login_attempt(value, password)
-    return (name, version) if version and not change_required else None
+    name, version = login_attempt(value, password)
+    return (name, version) if version else None
 
 
 def login_attempt(value, password):
     """Resolve the account once for password verification and failure accounting."""
     row = _login_account(value)
     version = _verified_version(row, password)
-    return (row['username'] if row else value, version, bool(version and row['must_change_password']))
+    return (row['username'] if row else value, version)
 
 
 def set_student_id(name, student_id):
@@ -216,9 +197,8 @@ def authenticate(name, password):
     if root_admin.is_root(name):
         return None  # the root identity only authenticates against its own file
     with db.read() as conn:
-        row = conn.execute('SELECT password,active,must_change_password FROM member_accounts WHERE username=?', (name,)).fetchone()
-    version = _verified_version(row, password)
-    return version if not row or not row['must_change_password'] else None
+        row = conn.execute('SELECT password,active FROM member_accounts WHERE username=?', (name,)).fetchone()
+    return _verified_version(row, password)
 
 
 def verify(name, password):
@@ -260,21 +240,23 @@ def _reject_root(name, action):
         raise ValueError(f'原始管理员不能{action}')
 
 
+def _reset_password(conn, name):
+    conn.execute('UPDATE member_accounts SET password=?,must_change_password=0 WHERE username=?',
+                 (admin_store._hash_password(INITIAL_PASSWORD), name))
+    conn.execute('DELETE FROM login_sessions WHERE username=?', (name,))
+
+
 def update(name, active=None, reset=False):
     from server.security import MEMBER_SESSIONS
     _reject_root(name, '在用户管理中修改')
-    password = secrets.token_urlsafe(24) if reset else None
     with db.write() as conn:
         if not conn.execute('SELECT username FROM member_accounts WHERE username=?', (name,)).fetchone():
             raise ValueError('账号不存在')
         if active is not None:
             conn.execute('UPDATE member_accounts SET active=? WHERE username=?', (int(bool(active)), name))
         if reset:
-            conn.execute('UPDATE member_accounts SET password=?,must_change_password=1 WHERE username=?',
-                         (admin_store._hash_password(password), name))
-            conn.execute('DELETE FROM login_sessions WHERE username=?', (name,))
+            _reset_password(conn, name)
     MEMBER_SESSIONS.clear(name + ':')
-    return {'username': name, 'password': password} if reset else None
 
 
 def set_password(name, new_password):
@@ -294,11 +276,9 @@ def change_password(name, old_password, new_password):
     _reject_root(name, '在这里修改密码')
     _validate_password(new_password)
     with db.write() as conn:
-        row = conn.execute('SELECT password,active,must_change_password FROM member_accounts WHERE username=?', (name,)).fetchone()
+        row = conn.execute('SELECT password,active FROM member_accounts WHERE username=?', (name,)).fetchone()
         if not _verified_version(row, old_password):
             raise ValueError('当前密码不正确')
-        if row['must_change_password'] and old_password == new_password:
-            raise ValueError('新密码不能与临时密码相同')
         password_hash = admin_store._hash_password(new_password)
         conn.execute('UPDATE member_accounts SET password=?,must_change_password=0 WHERE username=?',
                      (password_hash, name))

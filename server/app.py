@@ -74,9 +74,9 @@ async def lifespan(_app: FastAPI):
     system_clock.load()
     with db.read() as conn:
         operation_log.init(conn)
-    retired = await run_in_threadpool(member_store.retire_shared_passwords)
-    if retired:
-        print(f"[members] 已停用 {retired} 个旧初始密码，请管理员按需重置")
+    migrated = await run_in_threadpool(member_store.migrate_temporary_passwords)
+    if migrated:
+        print(f"[members] 已将 {migrated} 个仍使用临时密码的账号恢复为默认密码")
     result = await run_in_threadpool(member_store.provision)
     print(f"[members] 新建普通用户账号 {result['created']} 个，保留现有账号 {result['existing']} 个")
     slug = admin_store.path()
@@ -300,15 +300,13 @@ def _admin_gate(request: Request) -> bool:
     return request.session.get("admin_gate") == admin_store.path()
 
 
-def _login_page(request: Request, slug="", error="", status_code=200, change_required=False):
+def _login_page(request: Request, slug="", error="", status_code=200):
     role = "admin" if slug else "member"
     token_key = f"login_csrf_{role}"
     token = request.session.get(token_key)
     if not token:
         token = request.session[token_key] = secrets.token_urlsafe(32)
-    values = {"login_action": "/" + slug, "login_csrf": token, "login_error": error,
-              "password_change_hidden": "" if change_required else "hidden",
-              "password_change_required": "required" if change_required else "disabled"}
+    values = {"login_action": "/" + slug, "login_csrf": token, "login_error": error}
     if slug:
         registering = not admin_store.has_user()
         values.update(
@@ -403,16 +401,6 @@ async def _failed_login(source_limiter, source_key, account_limiter, account_key
     raise HTTPException(401, message)
 
 
-async def _replace_temporary_password(name, old_password, new_password):
-    change_header = {"X-Password-Change-Required": "1"}
-    if not new_password:
-        raise HTTPException(409, "请设置新密码后登录", headers=change_header)
-    try:
-        return await _verify_login(member_store.change_password, name, old_password, new_password)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc), headers=change_header) from exc
-
-
 async def _submit_login_form(request: Request, slug=""):
     role = "admin" if slug else "member"
     try:
@@ -420,15 +408,14 @@ async def _submit_login_form(request: Request, slug=""):
             raise HTTPException(400, "请通过登录表单提交")
         async with request.form() as form:
             _verify_login_csrf(request, role, form.get("login_csrf"))
-            body = {key: form.get(key) for key in ("username", "password", "new_password")}
+            body = {key: form.get(key) for key in ("username", "password")}
         if slug:
             handler = _admin_login if admin_store.has_user() else _admin_register
         else:
             handler = _member_login
         result = await handler(request, body)
     except HTTPException as exc:
-        change_required = (exc.headers or {}).get("X-Password-Change-Required") == "1"
-        return _login_page(request, slug, str(exc.detail), exc.status_code, change_required)
+        return _login_page(request, slug, str(exc.detail), exc.status_code)
     redirect = RedirectResponse("/" + slug, status_code=303, headers=NO_CACHE)
     if isinstance(result, Response):
         redirect.raw_headers.extend((key, value) for key, value in result.raw_headers if key == b"set-cookie")
@@ -605,10 +592,10 @@ async def _admin_login(request: Request, body=None):
     # The 原始管理员 authenticates against its own file, never the account table.
     is_root = root_admin.is_root(login_name)
     if is_root:
-        username, change_required = login_name, False
+        username = login_name
         version = await _verify_login(root_admin.authenticate, password)
     else:
-        username, version, change_required = await _verify_login(member_store.login_attempt, login_name, password)
+        username, version = await _verify_login(member_store.login_attempt, login_name, password)
     account_key = security.login_account_key("admin", username)
     key = security.login_client_key(request) + ":" + account_key
     if not version:
@@ -619,8 +606,6 @@ async def _admin_login(request: Request, body=None):
         ADMIN_LIMITER.fail(key)
         ACCOUNT_LIMITER.fail(account_key)
         raise HTTPException(status_code=403, detail="该账号没有管理员权限")
-    if change_required:
-        version = await _replace_temporary_password(username, password, body.get("new_password"))
     ADMIN_LIMITER.reset(key)
     ACCOUNT_LIMITER.reset(account_key)
     _log(username, '登录管理端')
@@ -1060,8 +1045,7 @@ async def weekly_save(request: Request):
         created = await run_in_threadpool(member_store.create_missing,
             {name for slot in roster['slots'] for names in slot['days'] for name in names},
             authorize=lambda: _require_default_account_grant(actor))
-        return JSONResponse({**roster, "members_created": created['created'],
-                             "temporary_passwords": created['temporary_passwords']}, headers=NO_CACHE)
+        return JSONResponse({**roster, "members_created": created['created']}, headers=NO_CACHE)
     except (ValueError, TypeError) as exc:
         raise _schedule_error(exc) from exc
 
@@ -1118,14 +1102,12 @@ async def _member_login(request: Request, body=None):
         body = await _login_json(request, "member")
     login_name = str(body.get("username") or "").strip()
     password = str(body.get("password") or "")
-    name, version, change_required = await _verify_login(member_store.login_attempt, login_name, password)
+    name, version = await _verify_login(member_store.login_attempt, login_name, password)
     key = security.login_account_key("member", name)
     source_key = security.login_client_key(request) + ":" + key
     if not version:
         await _failed_login(MEMBER_IP_LIMITER, source_key, MEMBER_LIMITER, key,
                             "姓名或密码不正确，或账号已停用", security.MEMBER_WINDOW_SECONDS)
-    if change_required:
-        version = await _replace_temporary_password(name, password, body.get("new_password"))
     MEMBER_LIMITER.reset(key)
     _log(name, '登录值班账号', role='member')
     request.session["member_username"] = name
@@ -1617,7 +1599,7 @@ async def admin_update_member(request: Request):
     if not _may_manage(target, actor):
         raise HTTPException(status_code=403, detail="该账号拥有权限，需具备更改权限的资格才能操作")
     try:
-        credential = await run_in_threadpool(member_store.update, target, body.get("active"), reset_password)
+        await run_in_threadpool(member_store.update, target, body.get("active"), reset_password)
         changes = []
         if "active" in body:
             changes.append('启用' if body.get("active") else '停用')
@@ -1626,7 +1608,7 @@ async def admin_update_member(request: Request):
         _log(_admin_username(request), '修改账号', f"{target}：{'、'.join(changes) or '无变化'}")
     except ValueError as exc:
         raise _schedule_error(exc) from exc
-    return JSONResponse({"ok": True, "temporary_passwords": [credential] if credential else []}, headers=NO_CACHE)
+    return JSONResponse({"ok": True}, headers=NO_CACHE)
 
 
 @app.get("/api/admin/session-timeout")
