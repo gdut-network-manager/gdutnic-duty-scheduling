@@ -33,9 +33,8 @@ $('deleteConfirmForm').onsubmit = async e => {
   deleteBusy = true;
   buttons.forEach(button => { button.disabled = true; });
   $('deleteConfirmStatus').textContent = '';
-  let result;
   try {
-    result = await task.submit();
+    await task.submit();
   } catch (err) {
     $('deleteConfirmStatus').textContent = err.message;
     return;
@@ -45,5 +44,5 @@ $('deleteConfirmForm').onsubmit = async e => {
   }
   pendingDelete = null;
   $('deleteConfirmDialog').close();
-  await task.onDone(result);
+  await task.onDone();
 };
